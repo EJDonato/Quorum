@@ -1,7 +1,7 @@
 # Quorum System Design
 
 **Status:** Draft implementation design  
-**Aligned with:** [PRD.md](PRD.md), version 2.1.0  
+**Aligned with:** [PRD.md](PRD.md), version 2.2.0\
 **Audience:** Implementers and reviewers of the CLI and orchestration engine
 
 ## 1. Scope and Design Decisions
@@ -16,7 +16,7 @@ The PRD owns product requirements. This document specifies implementation bounda
 | Orchestration | Explicit state machine with a pure transition reducer | Predictable retries, review invalidation, and replay |
 | Storage | Private JSON artifacts and append-only JSONL journal | Local operation without a database service |
 | Parallelism | One session per repository; serial tasks | Avoid conflicting mutations and integration complexity |
-| Agent integration | One planned Claude Code adapter behind a versioned interface | Verify actual capabilities before adding runners |
+| Agent integration | Antigravity (`agy`) and Codex adapters behind one versioned interface; one selected runner per session | Prioritize daily-driver workflows; verify each integration independently |
 | Isolation | Container execution plus host tool broker | Enforce filesystem, process, network, and credential boundaries |
 | Commit | One commit in a private repository; explicit export | Preserve the source checkout and index |
 | Validation | Deterministic checks plus independent QA/security reviews | Separate executable evidence from model judgment |
@@ -301,7 +301,7 @@ interface RunnerAdapter {
 }
 ```
 
-`Capabilities` must describe exact runner/model versions, structured output, broker-only tools, process-tree termination, usage reporting, enforceable token ceilings, and supported isolation profile. `CancellationReceipt` records descendant termination or failure to confirm it. Unsupported enforcement yields a capability error, not a permissive fallback. The feasibility spike must prove a compatible model/runner combination before this adapter is advertised as working.
+`Capabilities` must describe exact runner/model versions, structured output, broker-only tools, process-tree termination, usage reporting, enforceable token ceilings, and supported isolation profile. `CancellationReceipt` records descendant termination or failure to confirm it. Unsupported enforcement yields a capability error, not a permissive fallback. The feasibility spike must prove a compatible model/runner combination before an adapter is advertised as working. Antigravity (`agy`) and Codex are the initial targets. Record the actual integration surface, executable/API contract, authentication, and pinned versions separately for each; `agy` is a target label until verified. Implement both through this port and the existing broker, without runner-specific policy or approval paths. Session configuration selects one adapter; automatic fallback and mixing runners within a session are outside MVP. A failure on one target cannot be covered by conformance evidence from the other.
 
 ### 5.3 Role tools and local application API
 
@@ -332,7 +332,7 @@ Errors use `{code, message, retryable, remediation, details_ref?}`. Minimum code
 1. Developer installs the released CLI and runs `quorum init`.
 2. CLI detects repository/root, explains isolation and provider data transmission, and writes only missing configuration/persona templates.
 3. Existing settings are preserved; missing validation commands are shown as configuration work, not guessed as passing checks.
-4. Developer configures the pinned adapter/image and commands, then runs `quorum doctor`.
+4. Developer selects Antigravity (`agy`) or Codex, configures its pinned adapter/version/model, validation image, and commands, then runs `quorum doctor`.
 5. Doctor reports capabilities individually. Missing credentials, isolation, model budgets, or tooling produce actionable failures before a paid invocation.
 6. Success leads to `quorum run`; explicit advisory operation remains visibly unverified.
 
@@ -463,8 +463,8 @@ Presentation composition: `CommandView → SessionHeader + StageProgress + GateT
 1. Scaffold strict TypeScript, schema validation, test harness, and command skeleton; implement no real model calls yet.
 2. Build state reducer, budgets, schemas, artifact journal, locks, and private workspace management using deterministic fixtures.
 3. Implement frozen candidates, ballot evaluation, and crash-safe finalization with fake roles/checks.
-4. Prove sandbox/tool boundaries and first-adapter capabilities. If feasibility fails, record the limitation and revise the design explicitly; do not downgrade enforcement silently.
-5. Integrate planning, QA, Dev, security, and configured checks into a complete standard-change journey.
+4. Prove sandbox/tool boundaries and independently establish Antigravity (`agy`) and Codex capabilities. If feasibility fails, record the limitation and revise the design explicitly; do not downgrade enforcement silently.
+5. Integrate Antigravity (`agy`) and Codex one at a time; prove planning, QA, Dev, security, and configured checks in a complete standard-change journey for each.
 6. Add conditional design review and permitted exceptions, then run the PRD acceptance fixtures and benchmark.
 
 Unit tests cover deterministic policy/state logic. Integration tests use temporary repositories and real filesystem/process behavior. Adapter conformance tests verify protocol and capability promises. Model evaluations measure task outcomes and reviewer quality separately from deterministic tests. Offline fake-runner tests are the default development loop; paid live evaluations require an explicitly configured provider and bounded budget.

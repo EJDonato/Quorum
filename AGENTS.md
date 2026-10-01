@@ -10,7 +10,7 @@ Within project documentation, the PRD owns product behavior, SYSTEM_DESIGN owns 
 
 The repository currently starts from specifications. Proposed directories, interfaces, and scripts are not evidence that an implementation exists. Verify tools and commands before claiming they work. Do not mark roadmap items complete without implementation and appropriate verification.
 
-Build the smallest complete vertical slice in PRD delivery order. Do not add a web UI, database service, cloud deployment, extra runner adapters, or a mandatory nine-agent pipeline. Do not introduce Google ADK or another orchestration framework simply because this product involves agents. Preserve the chosen TypeScript architecture.
+Build the smallest complete vertical slice in PRD delivery order. Do not add a web UI, database service, cloud deployment, runner adapters beyond the planned Antigravity (`agy`) and Codex integrations, or a mandatory nine-agent pipeline. Do not introduce Google ADK or another orchestration framework simply because this product involves agents. Preserve the chosen TypeScript architecture.
 
 Do not spawn coding subagents by default. Use delegation only when the user explicitly requests it or a more specific applicable instruction authorizes it. Quorum's runtime role architecture does not authorize the coding agent to delegate its own work.
 
@@ -31,7 +31,7 @@ Progress autonomously on authorized reversible work. Ask only for information or
 - **Clarity first:** Prefer straightforward, explicit code over clever abstractions, reflection, or metaprogramming.
 - **Single responsibility:** Give each module a cohesive purpose and each function one understandable job.
 - **DRY:** Centralize shared invariants, schema definitions, permission checks, canonical hashing, and error mapping. Do not copy security logic into each adapter. Small local duplication is preferable to an abstraction that joins unrelated concepts.
-- **YAGNI:** Implement present requirements. Do not build a general workflow language, plugin marketplace, or generic dependency-injection framework for one adapter.
+- **YAGNI:** Implement present requirements. Do not build a general workflow language, plugin marketplace, or generic dependency-injection framework for the two initial adapters.
 - **Composition:** Prefer small functions and explicit interfaces over deep inheritance or stateful service hierarchies.
 - **Pure core:** State transitions, policy evaluation, budget arithmetic, and ballot decisions must be deterministic and side-effect-free. Inject clocks, IDs, and effect ports at boundaries.
 - **Explicit errors:** Use typed/discriminated outcomes for expected failures. Never swallow exceptions, return empty success on failure, or use a catch-all retry loop.

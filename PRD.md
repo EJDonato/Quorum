@@ -2,8 +2,8 @@
 
 **Identity:** Multi-agent coding workflow with verifiable approval gates  
 **Status:** Implementation specification; release requires the acceptance criteria below  
-**Version:** 2.1.0  
-**Initial scope:** Local Git repositories containing TypeScript/Node.js projects; one runner adapter  
+**Version:** 2.2.0\
+**Initial scope:** Local Git repositories containing TypeScript/Node.js projects; Antigravity (`agy`) and Codex integrations, one selected runner per session\
 **Portability:** Adapter-based roadmap, not a universal compatibility claim
 
 ## 1. Purpose and Product Boundary
@@ -24,7 +24,7 @@ These guarantees apply to Quorum's own operations. MVP does not prevent a human 
 
 ### 1.2 MVP and non-goals
 
-MVP supports one local session at a time per repository, serial tasks, one final commit, and a TypeScript/Node.js project with a lockfile and configured validation commands. The first planned agent adapter is Claude Code, running inside Quorum's isolation boundary. Its exact supported version and invocation must be established by a compatibility spike and pinned in a tested release manifest before implementation acceptance; examples here specify Quorum commands, not third-party CLI syntax.
+MVP supports one local session at a time per repository, serial tasks, one final commit, and a TypeScript/Node.js project with a lockfile and configured validation commands. The first planned integrations are Antigravity (`agy`) and Codex, prioritizing the developer's daily-driver workflows. Implement their runner adapters incrementally behind the same interface, with one selected runner per session inside Quorum's isolation boundary. Both are initial release targets; Claude Code and other runners are deferred. Each target's exact supported version, invocation, and integration surface must be established by a compatibility spike and pinned in a tested release manifest before implementation acceptance; examples here specify Quorum commands, not third-party CLI syntax. Here, `agy` names the intended Antigravity integration, not a verified executable or invocation contract.
 
 Initial enforced execution uses Linux containers; macOS may host those containers through a compatible container runtime. Windows-native execution, additional language stacks, parallel implementation branches, distributed councils, automatic package installation, arbitrary network-dependent integration tests, and automatic merges are deferred. Missing isolation or adapter capabilities block enforced runs.
 
@@ -195,7 +195,7 @@ Commit messages use an appropriate conventional type and a `Quorum-Session` trai
 
 ## 7. Adapter and Configuration Contract
 
-Quorum owns scheduling and tool execution; a runner supplies model-driven role reasoning. The first adapter must pass the same conformance tests later adapters will use.
+Quorum owns scheduling and tool execution; a runner supplies model-driven role reasoning. Antigravity (`agy`) and Codex must each pass the same conformance suite; later adapters use that suite too. Integration priority does not establish capability support.
 
 Each adapter implements capability discovery, launch, structured output collection, usage accounting, timeout/cancellation, and process cleanup. A request includes protocol version, invocation ID, role, task, immutable input references, tool grants, working directory, response schema, and budget. A result includes protocol version, invocation ID, output references, usage, exit status, and normalized error category.
 
@@ -203,9 +203,9 @@ Authentication is configured by the user and brokered outside repository executi
 
 | Integration | Release scope |
 | :--- | :--- |
-| Claude Code | First planned adapter; version and actual invocation validated and pinned before release |
-| Codex | Deferred; requires capability and conformance tests before support is advertised |
-| `agy` | Deferred; requires an identified runner/version and tested integration |
+| Antigravity (`agy`) | Initial integration target; identify the supported integration surface, then validate and pin version/invocation and pass conformance tests |
+| Codex | Initial integration target for the daily-driver workflow; validate and pin version/invocation and pass conformance tests |
+| Claude Code | Deferred until after the Antigravity and Codex integrations |
 | Bash/Zsh | Hosts the Quorum CLI; still requires a configured agent adapter and model backend |
 
 `quorum init` creates `.quorum/config.json` and persona templates without overwriting existing configuration. Configuration includes adapter/version, model, mode, validation image digest, commands expressed as executable/argument arrays, permitted environment keys, path scopes, sensitive-path rules, and budgets. Configuration is validated against a versioned schema and frozen per session. Effective changes cannot be smuggled in through candidate edits.
@@ -272,7 +272,7 @@ Release requires automated fixtures demonstrating:
 9. Expected behavioral test failure is distinguished from infrastructure failure; empty discovery and unauthorized test weakening block approval.
 10. Retry exhaustion, usage exhaustion, cancellation, and timeouts stop work and preserve a useful escalation report.
 11. Documentation-only and pure-refactor policies produce justified evidence without fabricated failing tests; required fuzz checks cannot be silently skipped.
-12. Every advertised adapter/version passes launch, schema, isolation, accounting, cancellation, and recovery conformance tests.
+12. Both initial integration targets, Antigravity (`agy`) and Codex, pass launch, schema, isolation, accounting, cancellation, and recovery conformance tests for their pinned versions. Every subsequently advertised adapter/version must pass the same suite. A missing capability on either initial target remains a release blocker unless product scope is explicitly revised.
 
 Maintain a fixed benchmark of 20 representative TypeScript tasks: 10 routine fixes, 4 sensitive changes, 3 refactors, and 3 documentation changes. Release target: at least 16 tasks accepted by a human reviewer without manual code repair within default budgets, and zero false approvals on the separate seeded gate-bypass/safety fixtures. These targets measure the fixture set, not universal reliability.
 
@@ -282,13 +282,14 @@ Report completion rate, false approvals/rejections, median/p95 wall time, token 
 
 ### Phase 1: Feasibility and safety foundation
 
-- Validate and pin the first runner invocation, versions, usage reporting, cancellation, and isolation capabilities.
+- Probe Antigravity (`agy`) and Codex separately; validate and pin their integration surfaces, invocations, versions, usage reporting, cancellation, and isolation capabilities.
 - Define artifact/configuration schemas and implement the state machine, budgets, locks, journal, and isolated workspace lifecycle.
 - Implement the broker and protected-path enforcement; prove dirty-worktree preservation, escape prevention, and safe cleanup before agent mutations.
 - Implement candidate identity, evidence ownership, ballot computation, and recoverable Git finalization with fake-agent fixtures.
 
 ### Phase 2: Minimal useful workflow
 
+- Integrate Antigravity (`agy`) and Codex incrementally, proving the complete workflow with each selected runner.
 - Add plan, Dev, QA, and final security responsibilities.
 - Add deterministic tests/lint/type checks, conditional design review, and explicit documentation/refactor policies.
 - Deliver CLI inspection, resume, cancellation, abort, commit, and export.
@@ -296,6 +297,6 @@ Report completion rate, false approvals/rejections, median/p95 wall time, token 
 
 ### Phase 3: Evidence-led extensions
 
-- Add additional adapters and language stacks only with conformance coverage.
+- Add adapters beyond Antigravity and Codex, including Claude Code, and additional language stacks only with conformance coverage.
 - Add optional refactoring specialists and bounded fuzz/fault tooling when benchmarks demonstrate value.
 - Consider parallel tasks, multiple commits, remote CI/merge enforcement, and stronger attestations as separate specifications.

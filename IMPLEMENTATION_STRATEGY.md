@@ -1,7 +1,7 @@
 # Quorum Implementation Strategy
 
 **Status:** Proposed execution plan; implementation has not started  
-**Baseline:** PRD version 2.1.0  
+**Baseline:** PRD version 2.2.0\
 **Scope:** First usable, enforced CLI release
 
 ## 1. Purpose and Source of Truth
@@ -17,11 +17,11 @@ All milestones below are initially pending. Proposed paths, scripts, and reports
 
 ## 2. Delivery Approach
 
-Build the trusted engine before connecting autonomous agents to writable workspaces. Prove a small end-to-end workflow with deterministic fake roles, then substitute the real adapter without changing the approval or isolation rules.
+Build the trusted engine before connecting autonomous agents to writable workspaces. Prove a small end-to-end workflow with deterministic fake roles, then integrate Antigravity (`agy`) and Codex one at a time without changing the approval or isolation rules.
 
 The first complete development slice is a single-task bug fix in a disposable TypeScript repository: configure → plan → establish a failing behavioral test → implement → freeze → validate → obtain QA/security results → inspect → explicitly commit → export. It must also demonstrate rejection and recovery. A demo that only succeeds is insufficient.
 
-Keep one package, one supported runner, one session per repository, serial tasks, and one final commit. Linting is a configured check. Refactoring is conditional. A dedicated chaos agent, other adapters, parallel implementation, and web UI remain outside this release.
+Keep one package, one selected runner per session, one session per repository, serial tasks, and one final commit. Antigravity (`agy`) and Codex are the two initial integration targets because they serve the daily-driver workflows; both belong to this release. Linting is a configured check. Refactoring is conditional. A dedicated chaos agent, adapters beyond Antigravity and Codex (including Claude Code), parallel implementation, and web UI remain outside this release.
 
 Resolve feasibility risks early without prematurely building integrations. Initial probes use disposable fixtures and minimal contracts; production integration follows the tested engine and sandbox. A fake runner demonstrates engine behavior but never establishes real enforcement capability.
 
@@ -29,12 +29,12 @@ Resolve feasibility risks early without prematurely building integrations. Initi
 
 | Milestone | Outcome | Depends on | Completion evidence |
 | :--- | :--- | :--- | :--- |
-| M0 | Runner/isolation feasibility understood | Existing specifications | Capability report, reproducible probes, recorded decision |
+| M0 | Antigravity and Codex feasibility understood | Existing specifications | Separate capability findings, reproducible probes, recorded decisions |
 | M1 | Buildable CLI and validated contracts | M0 investigation; independent scaffolding may proceed during investigation | Build/check scripts, schema fixtures, CLI smoke checks |
 | M2 | Durable session engine | M1 | Transition, budget, journal, lock, and recovery tests |
 | M3 | Safe workspaces and brokered effects | M2 and successful M0 capability decision | Preservation and sandbox boundary fixtures |
 | M4 | Complete offline workflow and exact-tree finalization | M3 | Fake-role end-to-end fixtures and commit receipts |
-| M5 | First real adapter and required roles | M4 | Adapter conformance and bounded live smoke results |
+| M5 | Antigravity and Codex adapters and required roles | M4 | Per-adapter conformance and bounded live smoke results |
 | M6 | Complete MVP journeys and conditional gates | M5 | CLI journey and policy regression suite |
 | M7 | Release qualification and packaging | M6 | Full PRD acceptance matrix, benchmark, install smoke report |
 
@@ -44,18 +44,18 @@ Milestone gates are evidence checks, not recurring permission requests. Proceed 
 
 ### M0 — Validate the Hard Assumptions
 
-**Objective:** Establish whether the planned runner can satisfy the product's enforced-mode contract.
+**Objective:** Establish whether each of Antigravity (`agy`) and Codex can satisfy the product's enforced-mode contract.
 
 Tasks:
 
-- Verify actual runner invocation, supported version, authentication, structured output, and model selection without assuming example flags exist.
+- For each initial target, identify the actual integration surface and verify runner invocation, supported version, authentication, structured output, and model selection without assuming example flags exist. Treat `agy` as the Antigravity target label until the executable/contract is verified.
 - Demonstrate that all role effects can be restricted to the broker; test whether built-in shell/filesystem tools can bypass it.
 - Probe credential separation, model-endpoint access, container isolation, and termination of descendant processes.
 - Verify enforceable request token ceilings and usage accounting across a multi-call role invocation. Record how reservations cover tool iterations, provider retries, and incomplete accounting.
 - Identify supported Node.js, Git, container runtime, runner, and model versions for a candidate release manifest.
-- Record minimal reproductions, observed limitations, and a proceed/block decision in `docs/decisions/runner-feasibility.md`.
+- Record minimal reproductions, observed limitations, and a separate proceed/block decision for each target in `docs/decisions/runner-feasibility.md`.
 
-**Exit gate:** Every required capability has observed evidence or a specific unresolved blocker. An unsupported capability cannot be represented as supported by a prompt, timeout alone, or post-hoc usage estimate. If the planned adapter cannot comply, propose a documented product/design change before adopting an alternative.
+**Exit gate:** Every required capability has observed evidence or a specific unresolved blocker. An unsupported capability cannot be represented as supported by a prompt, timeout alone, or post-hoc usage estimate. If either target cannot comply, retain its blocker and propose a documented product/design change before adopting an alternative or narrowing release scope. Evidence from one target does not establish support for the other.
 
 ### M1 — Establish the Package and Contracts
 
@@ -123,20 +123,20 @@ Tasks:
 
 Fake-role integration is available through test wiring, not a production flag that fabricates capability checks or verified results.
 
-### M5 — Integrate the First Real Runner
+### M5 — Integrate Antigravity and Codex
 
-**Objective:** Replace fake role reasoning with the validated adapter while retaining the same trusted execution paths.
+**Objective:** Replace fake role reasoning with the validated Antigravity (`agy`) and Codex adapters, one at a time, while retaining the same trusted execution paths. Start with a target cleared by M0; both must pass before this milestone is complete.
 
 Tasks:
 
-- Implement capability discovery, invocation, schema-bound output collection, usage accounting, normalized errors, cancellation, and cleanup.
+- Implement capability discovery, invocation, schema-bound output collection, usage accounting, normalized errors, cancellation, and cleanup for each adapter through the shared port. Select one runner per session; do not introduce automatic fallback or mixed-runner sessions.
 - Convert successful M0 probes into repeatable conformance tests against pinned versions.
 - Add versioned Planner, QA test-authoring, Dev, final QA, and final Security prompt templates from AGENTS.
 - Bind context to immutable artifacts; keep role results separate and omit cumulative chat history from role handoffs.
 - Integrate brokered model credentials and bounded requests without exposing them to repository checks.
-- Run a small explicitly budgeted live standard-change fixture and a seeded rejection fixture. Preserve raw execution status separately from review verdicts.
+- For each adapter, run a small explicitly budgeted live standard-change fixture and a seeded rejection fixture. Preserve raw execution status separately from review verdicts.
 
-**Exit gate:** A real run produces complete evidence under enforced permissions, and the rejection fixture blocks finalization. Required accounting, cancellation, and capability tests pass. Paid/live tests remain separate from the default offline development suite.
+**Exit gate:** Each initial adapter produces complete evidence in a real run under enforced permissions, and its rejection fixture blocks finalization. Required accounting, cancellation, and capability tests pass. Paid/live tests remain separate from the default offline development suite.
 
 ### M6 — Complete User Journeys and Policy Variants
 
@@ -187,7 +187,7 @@ Numbers refer to the twelve numbered acceptance criteria in PRD Section 9. Tests
 | 9. Valid red/green evidence and protected tests | M3–M4 | Behavioral-vs-infrastructure and unauthorized weakening cases |
 | 10. Bounded retries, usage, and cancellation | M2, M3, M5 | Exhaustion, uncertain usage, timeout, descendant termination |
 | 11. Justified exceptions and required fuzzing | M6 | Documentation/refactor/fuzz policy fixtures |
-| 12. Advertised adapter conformance | M0, M5, M7 | Version-specific capability and recovery report |
+| 12. Initial and advertised adapter conformance | M0, M5, M7 | Separate version-specific capability and recovery reports for Antigravity and Codex |
 
 Release benchmark targets remain those in the PRD: at least 16 of 20 tasks accepted by a human reviewer without manual code repair within default budgets; zero false approvals in the separate seeded safety fixtures; median routine-task latency at most 15 minutes; model token usage at most three times the equivalent single-agent baseline. Report median/p95 latency, token/cost data, repairs, and false approvals/rejections. These are release targets, not achieved results.
 
