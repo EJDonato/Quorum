@@ -16,6 +16,7 @@ export function captureProcess(options: {
   timeoutMs: number;
   maxOutputBytes?: number;
   signal?: AbortSignal;
+  env?: NodeJS.ProcessEnv;
 }): Promise<Capture> {
   if (options.signal?.aborted)
     return Promise.resolve({
@@ -31,6 +32,7 @@ export function captureProcess(options: {
       shell: false,
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
+      ...(options.env ? { env: options.env } : {}),
     });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];

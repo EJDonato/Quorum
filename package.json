@@ -25,6 +25,8 @@
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run size && npm test && npm run schemas:check",
     "test:conformance": "node scripts/unavailable.mjs conformance",
     "probe:runners": "npm run build && node scripts/probe-runners.mjs",
+    "probe:controls": "npm run build && node scripts/probe-controls.mjs",
+    "probe:container": "npm run build && node scripts/probe-container.mjs",
     "eval": "node scripts/unavailable.mjs evaluation"
   },
   "dependencies": {

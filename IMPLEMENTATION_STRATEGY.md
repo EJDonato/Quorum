@@ -55,7 +55,7 @@ Tasks:
 - Identify supported Node.js, Git, container runtime, runner, and model versions for a candidate release manifest.
 - Record minimal reproductions, observed limitations, and a separate proceed/block decision for each target in `docs/decisions/runner-feasibility.md`.
 
-**Exit gate:** Every required capability has observed evidence or a specific unresolved blocker. An unsupported capability cannot be represented as supported by a prompt, timeout alone, or post-hoc usage estimate. If either target cannot comply, retain its blocker and propose a documented product/design change before adopting an alternative or narrowing release scope. Evidence from one target does not establish support for the other.
+**Exit gate:** Every mandatory capability must have observed passing evidence for each pinned runner, or the user must explicitly revise product scope and the PRD/design. An unresolved blocker keeps M0 blocked. An unsupported capability cannot be represented as supported by a prompt, timeout alone, or post-hoc usage estimate. Evidence from one target does not establish support for the other.
 
 ### M1 — Establish the Package and Contracts
 

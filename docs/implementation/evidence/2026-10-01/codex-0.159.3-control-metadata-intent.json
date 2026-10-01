@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "runner_control_metadata",
+  "runner": "codex",
+  "expected_version": "0.159.3",
+  "model_calls_authorized": false,
+  "max_model_attempts": 0
+}

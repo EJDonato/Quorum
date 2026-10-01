@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "synthetic_container_boundary",
+  "image_id": "sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+  "model_calls_authorized": false,
+  "original_source_mount": false,
+  "artifact_store_mount": false,
+  "network_mode": "none",
+  "read_only_root": true
+}

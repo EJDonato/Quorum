@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "synthetic_container_boundary",
+  "image_id": "sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+  "docker_version": "29.6.2",
+  "container_id": "quorum-m0-aaaff7d520004645b39721351ad590bf",
+  "launched": true,
+  "exit_code": 0,
+  "failure": null,
+  "observations": {
+    "READ_OK": true,
+    "WRITE_DENIED": true,
+    "SOURCE_ABSENT": true,
+    "ARTIFACTS_ABSENT": true,
+    "SOCKET_ABSENT": true,
+    "HOST_ENV_ABSENT": true,
+    "SCRATCH_OK": true,
+    "NETWORK_DENIED": true
+  },
+  "cleanup_confirmed": true,
+  "runner_isolation_proven": false
+}
