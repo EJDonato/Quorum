@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "read_only_runner_discovery",
+  "recorded_date": "2026-10-01",
+  "enforced_conformance": false,
+  "antigravity": {
+    "version": "1.2.14",
+    "configured_model_label": "Gemini 3.8 Flash (Medium)",
+    "catalog_model_id": "gemini-3.8-flash-medium",
+    "historical_smoke_model_identified": false,
+    "model_catalog_attempts": [
+      {
+        "exit_code": 1,
+        "sandbox_restricted": true,
+        "observed_failures": [
+          "LOG_WRITE_DENIED",
+          "LOOPBACK_BIND_DENIED"
+        ],
+        "model_generation_requested": false
+      },
+      {
+        "exit_code": 0,
+        "sandbox_restricted": false,
+        "selected_label_matches_catalog": true,
+        "model_generation_requested": false
+      }
+    ],
+    "cli_tool_allowlist_flag_observed": false,
+    "cli_hard_token_ceiling_flag_observed": false
+  },
+  "codex": {
+    "version": "0.159.3",
+    "previous_observed_version": "0.157.1",
+    "version_drift": true,
+    "disable_shell_and_unified_exec_registry": {
+      "exit_code": 0,
+      "shell_tool": false,
+      "unified_exec": true,
+      "token_budget": false,
+      "rollout_budget": false,
+      "runtime_tool_exclusion_proven": false
+    },
+    "strict_config_read_only_attempts": [
+      {
+        "config_key": "max_output_tokens",
+        "exit_code": 1,
+        "unknown_field_diagnostic_detected": false,
+        "reason_unresolved": true
+      },
+      {
+        "config_key": "features.rollout_budget",
+        "exit_code": 1,
+        "unknown_field_diagnostic_detected": false,
+        "reason_unresolved": true
+      }
+    ],
+    "generated_protocol_schemas": {
+      "experimental": true,
+      "thread_start_has_dynamic_tools": true,
+      "thread_start_has_arbitrary_config": true,
+      "thread_start_has_top_level_hard_token_limit": false,
+      "turn_start_has_top_level_hard_token_limit": false,
+      "runtime_support_proven": false
+    }
+  },
+  "mandatory_capabilities_proven": false,
+  "m0_status": "BLOCKED"
+}

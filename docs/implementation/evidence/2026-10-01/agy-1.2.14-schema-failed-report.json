@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "structured_output_smoke",
+  "recorded_at": "2026-10-01T13:24:48.260Z",
+  "runner": "agy",
+  "expected_version": "1.2.14",
+  "runner_version": "1.2.14",
+  "executable_digest": "sha256:a33fdf084ecd199df00694f35a243200a3efacb1f4f3adf04ca19d76f7f714c4",
+  "requested_model": "gemini-3.8-flash-medium",
+  "model_identity_verified": false,
+  "timeout_ms": 60000,
+  "max_output_bytes": 1048576,
+  "attempts": 1,
+  "enforced_conformance": false,
+  "cleanup_confirmed": false,
+  "hard_token_ceiling": false,
+  "usage_accounting_complete": false,
+  "exit_code": 0,
+  "execution_failure": null,
+  "diagnostic_codes": [],
+  "result": {
+    "ok": false,
+    "reason": "INVALID_PROTOCOL"
+  }
+}

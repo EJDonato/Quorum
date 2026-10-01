@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "structured_output_smoke",
+  "recorded_at": "2026-10-01T13:23:57.676Z",
+  "runner": "codex",
+  "expected_version": "0.159.3",
+  "runner_version": "0.159.3",
+  "executable_digest": "sha256:4d210f7c5a18fd0386434df23b5bdbb8c0e7257d3e8a2b30b0769c8bbe99a878",
+  "requested_model": "gpt-6-sol",
+  "model_identity_verified": false,
+  "timeout_ms": 60000,
+  "max_output_bytes": 1048576,
+  "attempts": 1,
+  "enforced_conformance": false,
+  "cleanup_confirmed": false,
+  "hard_token_ceiling": false,
+  "usage_accounting_complete": false,
+  "exit_code": 0,
+  "execution_failure": null,
+  "diagnostic_codes": [],
+  "result": {
+    "ok": true,
+    "response": {
+      "marker": "QUORUM_OK",
+      "sum": 5
+    },
+    "usage": {
+      "input_tokens": 16144,
+      "output_tokens": 22,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "reasoning_output_tokens": 0
+    }
+  }
+}

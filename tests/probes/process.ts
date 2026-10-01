@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 
 export interface Capture {
   stdout: string;
+  stderr: string;
   exitCode: number | null;
   interrupted: boolean;
   failure: "LAUNCH_FAILED" | "TIMED_OUT" | "OUTPUT_LIMIT" | "CANCELLED" | null;
@@ -19,6 +20,7 @@ export function captureProcess(options: {
   if (options.signal?.aborted)
     return Promise.resolve({
       stdout: "",
+      stderr: "",
       exitCode: null,
       interrupted: true,
       failure: "CANCELLED",
@@ -31,6 +33,7 @@ export function captureProcess(options: {
       stdio: ["ignore", "pipe", "pipe"],
     });
     const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
     let bytes = 0;
     let failure: Capture["failure"] = null;
     const terminate = (reason: Capture["failure"]) => {
@@ -56,6 +59,7 @@ export function captureProcess(options: {
       if (bytes > (options.maxOutputBytes ?? 1_048_576))
         terminate("OUTPUT_LIMIT");
       else if (isStdout) stdout.push(chunk);
+      else stderr.push(chunk);
     };
     child.stdout.on("data", (chunk: Buffer) => collect(chunk, true));
     child.stderr.on("data", (chunk: Buffer) => collect(chunk, false));
@@ -64,6 +68,7 @@ export function captureProcess(options: {
       options.signal?.removeEventListener("abort", cancel);
       resolve({
         stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
         exitCode,
         interrupted: failure !== null,
         failure,
