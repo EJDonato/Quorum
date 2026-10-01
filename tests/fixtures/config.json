@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "adapter": {
+    "name": "codex",
+    "version": "fixture-unverified",
+    "model": "fixture-unverified"
+  },
+  "mode": "enforced",
+  "validation_image": "quorum-fixture@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "commands": [
+    {
+      "check_id": "unit",
+      "kind": "test",
+      "executable": "node",
+      "args": ["--test"]
+    }
+  ],
+  "permitted_environment_keys": [],
+  "paths": {
+    "implementation": ["src"],
+    "tests": ["tests"],
+    "protected": ["package.json"],
+    "sensitive": ["src/auth"]
+  },
+  "budgets": {
+    "repairs_per_stage": 2,
+    "repairs_total": 6,
+    "invocation_timeout_ms": 600000,
+    "check_timeout_ms": 600000,
+    "active_session_ms": 3600000,
+    "model_tokens": 200000
+  }
+}

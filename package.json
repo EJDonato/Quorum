@@ -1,0 +1,39 @@
+{
+  "name": "quorum",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local coding workflow harness with revision-bound approval gates",
+  "type": "module",
+  "bin": {
+    "quorum": "dist/src/cli/main.js"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "size": "node scripts/check-size.mjs",
+    "schemas:check": "node scripts/export-schemas.mjs --check",
+    "schemas:generate": "npm run build && node scripts/export-schemas.mjs",
+    "test:unit": "node --test dist/tests/unit/*.test.js",
+    "test:integration": "node --test dist/tests/integration/*.test.js",
+    "test": "npm run build && npm run test:unit && npm run test:integration",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run size && npm test && npm run schemas:check",
+    "test:conformance": "node scripts/unavailable.mjs conformance",
+    "eval": "node scripts/unavailable.mjs evaluation"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "eslint": "10.11.0",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.0"
+  }
+}

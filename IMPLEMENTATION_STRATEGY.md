@@ -1,6 +1,6 @@
 # Quorum Implementation Strategy
 
-**Status:** Proposed execution plan; implementation has not started  
+**Status:** Execution plan; initial foundation subset implemented, milestones remain incomplete\
 **Baseline:** PRD version 2.2.0\
 **Scope:** First usable, enforced CLI release
 
@@ -13,7 +13,7 @@ This document defines what to build first, how to divide the work, and what evid
 - [AGENTS.md](AGENTS.md) defines coding principles, size limits, implementation boundaries, and verification practices.
 - This document defines delivery sequence and milestone completion. It does not override the other specifications.
 
-All milestones below are initially pending. Proposed paths, scripts, and reports are deliverables to create during implementation, not existing capabilities. Mark work complete only after its evidence exists.
+All milestones below remain pending. The initial implemented subset is documented in [the foundation report](docs/implementation/foundation.md); it does not satisfy a full milestone exit gate. Proposed paths, scripts, and reports beyond that subset are deliverables to create, not existing capabilities. Mark work complete only after its evidence exists.
 
 ## 2. Delivery Approach
 
@@ -247,4 +247,4 @@ The first implementation session should begin with these tasks, in order:
 - [ ] Implement the initial schema/error contracts and pure session reducer.
 - [ ] Demonstrate one rejected transition and one crash-replayed transition before connecting real model-driven mutations.
 
-This strategy authorizes no implementation or publication by itself. It is the execution plan to follow when implementation is requested; the current deliverable is this document.
+This strategy authorizes no implementation or publication by itself. Implementation began after the user's explicit request; publication still requires separate authorization.

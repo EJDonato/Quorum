@@ -1,0 +1,8 @@
+node_modules
+dist
+schemas
+package-lock.json
+PRD.md
+SYSTEM_DESIGN.md
+AGENTS.md
+IMPLEMENTATION_STRATEGY.md
