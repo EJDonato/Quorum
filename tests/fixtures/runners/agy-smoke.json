@@ -1,0 +1,14 @@
+{
+  "conversation_id": "dfe26da0-0387-4d07-ba1b-1dfff17d35cd",
+  "status": "SUCCESS",
+  "response": "QUORUM_OK\n",
+  "duration_seconds": 4.804346,
+  "num_turns": 1,
+  "usage": {
+    "input_tokens": 29285,
+    "output_tokens": 60,
+    "thinking_tokens": 55,
+    "cache_read_tokens": 0,
+    "total_tokens": 29345
+  }
+}
