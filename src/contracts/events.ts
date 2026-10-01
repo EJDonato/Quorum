@@ -40,6 +40,9 @@ export const transitionInputSchema = z.discriminatedUnion("type", [
   }),
   z.strictObject({ type: z.literal("RESERVE_TOKENS"), tokens: positiveCount }),
   z.strictObject({ type: z.literal("CHARGE_ACTIVE_TIME"), elapsed_ms: count }),
+  z.strictObject({ type: z.literal("BALLOT_APPROVED") }),
+  z.strictObject({ type: z.literal("FINALIZATION_STARTED") }),
+  z.strictObject({ type: z.literal("FINALIZATION_COMPLETED") }),
 ]);
 
 export const eventSchema = z.strictObject({

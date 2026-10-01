@@ -81,4 +81,5 @@ export const reviewResultSchema = z
     }
   });
 
+export type ReviewBody = z.infer<typeof reviewBodySchema>;
 export type ReviewResult = z.infer<typeof reviewResultSchema>;

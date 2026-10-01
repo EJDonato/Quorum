@@ -72,6 +72,18 @@ function advance(
       if (session.state === "VALIDATING")
         return changed(session, { state: "REVIEWING" });
       break;
+    case "BALLOT_APPROVED":
+      if (session.state === "REVIEWING")
+        return changed(session, { state: "APPROVED" });
+      break;
+    case "FINALIZATION_STARTED":
+      if (session.state === "APPROVED")
+        return changed(session, { state: "FINALIZING" });
+      break;
+    case "FINALIZATION_COMPLETED":
+      if (session.state === "FINALIZING")
+        return changed(session, { state: "COMPLETED" });
+      break;
     default:
       break;
   }
@@ -217,10 +229,14 @@ export function transition(
     return failure("INVALID_INPUT", "Invalid session or transition input.");
   if (["ABORTED", "COMPLETED"].includes(session.data.state))
     return failure("INVALID_INPUT", "Terminal sessions cannot transition.");
-  if (session.data.state === "FINALIZING")
+  if (
+    session.data.state === "FINALIZING" &&
+    event.data.type !== "FINALIZATION_COMPLETED"
+  ) {
     return failure(
       "CAPABILITY_MISSING",
       "Finalization transaction reconciliation is not implemented.",
     );
+  }
   return applyInput(session.data, event.data);
 }

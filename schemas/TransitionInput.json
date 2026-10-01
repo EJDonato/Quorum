@@ -237,6 +237,45 @@
         "elapsed_ms"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "BALLOT_APPROVED"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "FINALIZATION_STARTED"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "FINALIZATION_COMPLETED"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
     }
   ]
 }
