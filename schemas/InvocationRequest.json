@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "invocation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "task_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "assignment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "planning"
+            },
+            "role": {
+              "type": "string",
+              "const": "planner"
+            }
+          },
+          "required": [
+            "phase",
+            "role"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "architecture"
+            },
+            "role": {
+              "type": "string",
+              "const": "architect"
+            }
+          },
+          "required": [
+            "phase",
+            "role"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "design"
+            },
+            "role": {
+              "type": "string",
+              "const": "security"
+            }
+          },
+          "required": [
+            "phase",
+            "role"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "test_authoring"
+            },
+            "role": {
+              "type": "string",
+              "const": "qa"
+            }
+          },
+          "required": [
+            "phase",
+            "role"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "implementation"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "developer",
+                "refactor"
+              ]
+            }
+          },
+          "required": [
+            "phase",
+            "role"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "const": "final"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "qa",
+                "security"
+              ]
+            },
+            "candidate_id": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "phase",
+            "role",
+            "candidate_id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "input_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "input_refs": {
+      "minItems": 1,
+      "maxItems": 256,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "grants": {
+      "type": "object",
+      "properties": {
+        "tools": {
+          "minItems": 1,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "repo.read",
+              "repo.search",
+              "artifact.read",
+              "draft.apply_patch",
+              "checks.run",
+              "role.submit",
+              "scope.request"
+            ]
+          }
+        },
+        "read_paths": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "pattern": "^(?!\\/)(?![A-Za-z]:)(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])(?!(?:.*\\/)?\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
+          }
+        },
+        "write_paths": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "pattern": "^(?!\\/)(?![A-Za-z]:)(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])(?!(?:.*\\/)?\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
+          }
+        },
+        "check_ids": {
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          }
+        }
+      },
+      "required": [
+        "tools",
+        "read_paths",
+        "write_paths",
+        "check_ids"
+      ],
+      "additionalProperties": false
+    },
+    "response_schema_ref": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "tokens_reserved": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "timeout_ms",
+        "tokens_reserved"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "protocol_version",
+    "invocation_id",
+    "session_id",
+    "task_id",
+    "assignment",
+    "input_digest",
+    "input_refs",
+    "grants",
+    "response_schema_ref",
+    "limits"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "standard",
+        "sensitive",
+        "documentation",
+        "refactor"
+      ]
+    },
+    "fuzz_required": {
+      "type": "boolean"
+    },
+    "tasks": {
+      "minItems": 1,
+      "maxItems": 256,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "dependencies": {
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            }
+          },
+          "authorized_paths": {
+            "minItems": 1,
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "pattern": "^(?!\\/)(?![A-Za-z]:)(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])(?!(?:.*\\/)?\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
+            }
+          },
+          "criterion_ids": {
+            "minItems": 1,
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            }
+          }
+        },
+        "required": [
+          "task_id",
+          "dependencies",
+          "authorized_paths",
+          "criterion_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "acceptance_criteria": {
+      "minItems": 1,
+      "maxItems": 256,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "owner_task_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "description",
+          "owner_task_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "risk",
+    "fuzz_required",
+    "tasks",
+    "acceptance_criteria"
+  ],
+  "additionalProperties": false
+}

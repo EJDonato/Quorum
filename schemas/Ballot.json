@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "evidence": {
+      "maxItems": 512,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "reason_codes": {
+      "maxItems": 16,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ADVISORY_MODE",
+          "PREREQUISITES_INCOMPLETE",
+          "CHECK_MISSING",
+          "CHECK_FAILED",
+          "QA_MISSING",
+          "SECURITY_MISSING",
+          "REVIEW_REJECTED",
+          "REVIEW_INCOMPLETE",
+          "EVIDENCE_INVALID"
+        ]
+      }
+    },
+    "quorum_achieved": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "candidate_id",
+    "policy_hash",
+    "evidence",
+    "reason_codes",
+    "quorum_achieved"
+  ],
+  "additionalProperties": false
+}

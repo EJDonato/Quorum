@@ -88,7 +88,7 @@ async function main() {
     });
   } catch {
     report = {
-      schema_version: "1.0.0",
+      schema_version: "1.1.0",
       kind: "structured_output_smoke",
       runner: values.runner,
       expected_version: values["expected-version"],

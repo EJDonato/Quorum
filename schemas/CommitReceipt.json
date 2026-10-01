@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "transaction_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "commit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "const": "sha1"
+            },
+            "oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "required": [
+            "format",
+            "oid"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "const": "sha256"
+            },
+            "oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "format",
+            "oid"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "tree": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "const": "sha1"
+            },
+            "oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "required": [
+            "format",
+            "oid"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "const": "sha256"
+            },
+            "oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "format",
+            "oid"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "parent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "const": "sha1"
+            },
+            "oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "required": [
+            "format",
+            "oid"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "const": "sha256"
+            },
+            "oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "format",
+            "oid"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "evidence_refs": {
+      "minItems": 1,
+      "maxItems": 512,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "transaction_id",
+    "session_id",
+    "candidate_id",
+    "commit",
+    "tree",
+    "parent",
+    "evidence_refs"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "base_commit": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "const": "sha1"
+                },
+                "oid": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40}$"
+                }
+              },
+              "required": [
+                "format",
+                "oid"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "const": "sha256"
+                },
+                "oid": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "format",
+                "oid"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "tree": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "const": "sha1"
+                },
+                "oid": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40}$"
+                }
+              },
+              "required": [
+                "format",
+                "oid"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "const": "sha256"
+                },
+                "oid": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "format",
+                "oid"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "policy_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "configuration_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "plan_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "acceptance_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "contract_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "tests_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "validation_environment_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "adapter": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "enum": [
+                "agy",
+                "codex"
+              ]
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "model_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "name",
+            "version",
+            "model",
+            "model_version"
+          ],
+          "additionalProperties": false
+        },
+        "persona_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "base_commit",
+        "tree",
+        "policy_hash",
+        "configuration_digest",
+        "plan_digest",
+        "acceptance_digest",
+        "contract_digest",
+        "tests_digest",
+        "validation_environment_digest",
+        "adapter",
+        "persona_digest"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "identity"
+  ],
+  "additionalProperties": false
+}

@@ -7,6 +7,20 @@ import {
   transitionInputSchema,
 } from "../dist/src/contracts/events.js";
 import { errorSchema } from "../dist/src/contracts/errors.js";
+import { motionSchema } from "../dist/src/contracts/motion.js";
+import { candidateManifestSchema } from "../dist/src/contracts/candidate.js";
+import {
+  invocationRequestSchema,
+  invocationResultSchema,
+} from "../dist/src/contracts/invocation.js";
+import { checkResultSchema } from "../dist/src/contracts/checks.js";
+import {
+  reviewBodySchema,
+  reviewResultSchema,
+} from "../dist/src/contracts/reviews.js";
+import { ballotSchema } from "../dist/src/contracts/ballot.js";
+import { ballotRequirementsSchema } from "../dist/src/contracts/ballot-input.js";
+import { commitReceiptSchema } from "../dist/src/contracts/receipt.js";
 
 const schemas = {
   RepositoryConfig: repositoryConfigSchema,
@@ -14,6 +28,16 @@ const schemas = {
   Event: eventSchema,
   TransitionInput: transitionInputSchema,
   Error: errorSchema,
+  Motion: motionSchema,
+  CandidateManifest: candidateManifestSchema,
+  InvocationRequest: invocationRequestSchema,
+  InvocationResult: invocationResultSchema,
+  CheckResult: checkResultSchema,
+  ReviewBody: reviewBodySchema,
+  ReviewResult: reviewResultSchema,
+  Ballot: ballotSchema,
+  BallotRequirements: ballotRequirementsSchema,
+  CommitReceipt: commitReceiptSchema,
 };
 const check = process.argv.includes("--check");
 if (!check) await mkdir("schemas", { recursive: true });

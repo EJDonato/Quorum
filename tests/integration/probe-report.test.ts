@@ -18,6 +18,7 @@ async function fakeRunner(directory: string, version: string, failure = false) {
   const envelope = JSON.stringify({
     status: "SUCCESS",
     response: '{"marker":"QUORUM_OK","sum":5}',
+    structured_output: { marker: "QUORUM_OK", sum: 5 },
     usage: { input_tokens: 10, output_tokens: 4 },
   });
   await writeFile(
@@ -83,6 +84,10 @@ await test("success and failed attempts retain fixed diagnostics without secrets
       assert.equal(result.enforced_conformance, false);
       assert.equal(result.hard_token_ceiling, false);
       assert.equal(result.cleanup_confirmed, false);
+      assert.equal(result.schema_version, "1.1.0");
+      assert.ok(result.timings_ms.version_discovery !== null);
+      assert.ok(result.timings_ms.invocation !== null);
+      assert.ok(result.timings_ms.total >= result.timings_ms.invocation);
       assert.doesNotMatch(JSON.stringify(result), /fixture-secret/);
       if (failure)
         assert.deepEqual(result.diagnostic_codes, ["AUTHENTICATION"]);

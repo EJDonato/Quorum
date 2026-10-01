@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.1.0",
+  "kind": "structured_output_smoke",
+  "recorded_at": "2026-10-01T13:49:46.970Z",
+  "runner": "agy",
+  "expected_version": "1.2.14",
+  "runner_version": "1.2.14",
+  "version_exit_code": 0,
+  "executable_digest": "sha256:a33fdf084ecd199df00694f35a243200a3efacb1f4f3adf04ca19d76f7f714c4",
+  "requested_model": "gemini-3.8-flash-medium",
+  "model_identity_verified": false,
+  "timeout_ms": 60000,
+  "max_output_bytes": 1048576,
+  "attempts": 1,
+  "enforced_conformance": false,
+  "cleanup_confirmed": false,
+  "hard_token_ceiling": false,
+  "usage_accounting_complete": false,
+  "exit_code": 0,
+  "execution_failure": null,
+  "diagnostic_codes": [],
+  "timings_ms": {
+    "version_discovery": 88,
+    "invocation": 16347,
+    "total": 16769
+  },
+  "result": {
+    "ok": false,
+    "reason": "INVALID_PROTOCOL",
+    "diagnostic": {
+      "stage": "response_json",
+      "code": "MALFORMED_JSON",
+      "fields": []
+    },
+    "envelope_shape": {
+      "status": "string",
+      "response": "string",
+      "usage": "object",
+      "structured_output": "object",
+      "result": "absent"
+    }
+  }
+}

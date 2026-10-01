@@ -27,7 +27,18 @@ function codex(text = response) {
     .join("\n");
 }
 function agy(text = response) {
-  return JSON.stringify({ status: "SUCCESS", response: text, usage });
+  let structured: unknown;
+  try {
+    structured = JSON.parse(text);
+  } catch {
+    structured = text;
+  }
+  return JSON.stringify({
+    status: "SUCCESS",
+    response: text,
+    structured_output: structured,
+    usage,
+  });
 }
 
 await test("user-provided smoke transcripts preserve reported outcomes and usage", async () => {

@@ -71,12 +71,17 @@ export interface ProbeReport {
   exit_code: number | null;
   execution_failure: string | null;
   diagnostic_codes: string[];
+  timings_ms: {
+    version_discovery: number | null;
+    invocation: number | null;
+    total: number;
+  };
   result: ReturnType<typeof validateProbe>;
 }
 
 function initialReport(options: ProbeOptions): ProbeReport {
   return {
-    schema_version: "1.0.0",
+    schema_version: "1.1.0",
     kind: "structured_output_smoke",
     recorded_at: new Date().toISOString(),
     runner: options.runner,
@@ -96,6 +101,7 @@ function initialReport(options: ProbeOptions): ProbeReport {
     exit_code: null,
     execution_failure: null,
     diagnostic_codes: [],
+    timings_ms: { version_discovery: null, invocation: null, total: 0 },
     result: { ok: false, reason: "EXECUTION_FAILED" },
   };
 }
@@ -104,6 +110,7 @@ async function versionMatches(
   options: ProbeOptions,
   report: ProbeReport,
 ): Promise<boolean> {
+  const started = performance.now();
   const version = await captureProcess({
     executable: options.executable,
     args: ["--version"],
@@ -111,6 +118,7 @@ async function versionMatches(
     timeoutMs: 10_000,
     ...(options.signal ? { signal: options.signal } : {}),
   });
+  report.timings_ms.version_discovery = Math.round(performance.now() - started);
   const match = /^(?:codex-cli )?(\d+\.\d+\.\d+[\w.-]*)\s*$/.exec(
     version.stdout,
   );
@@ -136,6 +144,7 @@ export async function runSchemaProbe(
   options: ProbeOptions,
 ): Promise<ProbeReport> {
   const report = initialReport(options);
+  const started = performance.now();
   try {
     const executable = await realpath(options.executable);
     const pinned = { ...options, executable };
@@ -146,6 +155,7 @@ export async function runSchemaProbe(
       return report;
     }
     report.attempts = 1;
+    const invocationStarted = performance.now();
     const capture = await captureProcess({
       executable,
       args: probeArguments(options),
@@ -153,6 +163,9 @@ export async function runSchemaProbe(
       timeoutMs: 60_000,
       ...(options.signal ? { signal: options.signal } : {}),
     });
+    report.timings_ms.invocation = Math.round(
+      performance.now() - invocationStarted,
+    );
     report.exit_code = capture.exitCode;
     report.execution_failure = capture.failure;
     report.diagnostic_codes = diagnostics(capture);
@@ -160,5 +173,7 @@ export async function runSchemaProbe(
     return report;
   } catch {
     return { ...report, execution_failure: "INFRASTRUCTURE_FAILED" };
+  } finally {
+    report.timings_ms.total = Math.round(performance.now() - started);
   }
 }

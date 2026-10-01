@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  envelopeShape,
+  fail,
+  parseJson,
+  parseSchema,
+  ProtocolFailure,
+  type ProtocolDiagnostic,
+} from "./diagnostics.js";
 
 export type Runner = "codex" | "agy";
 const tokens = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -32,35 +40,43 @@ export type ProbeResult =
       response: z.infer<typeof responseSchema>;
       usage: z.infer<typeof usageSchema>;
     }
-  | { ok: false; reason: "EXECUTION_FAILED" | "INVALID_PROTOCOL" };
-
-function parseJson(text: string): unknown {
-  return JSON.parse(text);
-}
+  | {
+      ok: false;
+      reason: "EXECUTION_FAILED" | "INVALID_PROTOCOL";
+      diagnostic?: ProtocolDiagnostic;
+      envelope_shape?: Record<string, string>;
+    };
 
 function messageFromItem(
   record: unknown,
   eventType: string,
 ): string | undefined {
   if (!["item.started", "item.updated", "item.completed"].includes(eventType)) {
-    throw new Error("Unknown item event");
+    fail("events", "INVALID_SEQUENCE");
   }
-  const { item } = z.object({ item: itemSchema }).parse(record);
+  const { item } = parseSchema(
+    z.object({ item: itemSchema }),
+    record,
+    "events",
+  );
   if (eventType !== "item.completed" || item.type !== "agent_message")
     return undefined;
-  if (item.text === undefined) throw new Error("Missing message");
+  if (item.text === undefined) fail("events", "INCOMPLETE_TURN");
   return item.text;
 }
 
 function codexOutput(stdout: string) {
-  const records = stdout.trim().split("\n").map(parseJson);
+  const records = stdout
+    .trim()
+    .split("\n")
+    .map((line) => parseJson(line, "output_json"));
   const messages: string[] = [];
   const completions: z.infer<typeof usageSchema>[] = [];
   let started = false;
   let thread = false;
   for (const record of records) {
-    const event = eventSchema.parse(record);
-    if (completions.length > 0) throw new Error("Trailing event");
+    const event = parseSchema(eventSchema, record, "events");
+    if (completions.length > 0) fail("events", "INVALID_SEQUENCE");
     if (event.type === "thread.started" && !thread && !started) {
       thread = true;
     } else if (event.type === "turn.started" && thread && !started) {
@@ -69,31 +85,45 @@ function codexOutput(stdout: string) {
       const message = messageFromItem(record, event.type);
       if (message !== undefined) messages.push(message);
     } else if (event.type === "turn.completed" && started) {
-      completions.push(z.object({ usage: usageSchema }).parse(record).usage);
+      completions.push(
+        parseSchema(z.object({ usage: usageSchema }), record, "usage").usage,
+      );
     } else {
-      throw new Error("Unknown, failed, or reordered event");
+      fail("events", "INVALID_SEQUENCE");
     }
   }
   if (messages.length !== 1 || completions.length !== 1)
-    throw new Error("Incomplete turn");
+    fail("events", "INCOMPLETE_TURN");
   const text = messages[0];
   const usage = completions[0];
   if (text === undefined || usage === undefined)
-    throw new Error("Incomplete output");
-  return { response: responseSchema.parse(parseJson(text)), usage };
+    fail("events", "INCOMPLETE_TURN");
+  return {
+    response: parseSchema(
+      responseSchema,
+      parseJson(text, "response_json"),
+      "response_schema",
+    ),
+    usage,
+  };
 }
 
-function agyOutput(stdout: string) {
-  const envelope = z
-    .object({
-      status: z.literal("SUCCESS"),
-      response: z.string(),
-      usage: usageSchema,
-    })
-    .parse(parseJson(stdout));
+function agyOutput(value: unknown) {
+  const envelope = parseSchema(
+    z.record(z.string(), z.unknown()),
+    value,
+    "envelope",
+  );
+  parseSchema(z.literal("SUCCESS"), envelope.status, "status");
+  parseSchema(z.string(), envelope.response, "envelope");
+  const usage = parseSchema(usageSchema, envelope.usage, "usage");
   return {
-    response: responseSchema.parse(parseJson(envelope.response)),
-    usage: envelope.usage,
+    response: parseSchema(
+      responseSchema,
+      envelope.structured_output,
+      "response_schema",
+    ),
+    usage,
   };
 }
 
@@ -106,15 +136,26 @@ export function validateProbe(options: {
   if (options.exitCode !== 0 || options.interrupted) {
     return { ok: false, reason: "EXECUTION_FAILED" };
   }
+  let shape: Record<string, string> | undefined;
   try {
+    const agy =
+      options.runner === "agy"
+        ? parseJson(options.stdout, "output_json")
+        : undefined;
+    if (options.runner === "agy") shape = envelopeShape(agy);
     const result =
-      options.runner === "codex"
-        ? codexOutput(options.stdout)
-        : agyOutput(options.stdout);
+      options.runner === "codex" ? codexOutput(options.stdout) : agyOutput(agy);
     return { ok: true, ...result };
-  } catch {
+  } catch (error) {
     // Never echo untrusted runner output or provider diagnostics into reports.
-    return { ok: false, reason: "INVALID_PROTOCOL" };
+    return {
+      ok: false,
+      reason: "INVALID_PROTOCOL",
+      ...(error instanceof ProtocolFailure
+        ? { diagnostic: error.diagnostic }
+        : {}),
+      ...(shape ? { envelope_shape: shape } : {}),
+    };
   }
 }
 

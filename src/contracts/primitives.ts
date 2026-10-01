@@ -10,6 +10,19 @@ export const digest = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 export const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const positiveCount = count.min(1);
 export const utcTimestamp = z.iso.datetime({ offset: false });
+export const artifactReference = z.strictObject({
+  artifact_id: opaqueId,
+  digest,
+});
+export const executionStatus = z.enum([
+  "SUCCEEDED",
+  "FAILED",
+  "TIMED_OUT",
+  "CANCELLED",
+  "PROTOCOL_ERROR",
+]);
+export const boundedText = z.string().min(1).max(4096);
+export const versionLabel = z.string().min(1).max(128);
 export const gitObject = z.discriminatedUnion("format", [
   z.strictObject({
     format: z.literal("sha1"),
