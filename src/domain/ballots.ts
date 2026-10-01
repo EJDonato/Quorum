@@ -119,7 +119,7 @@ export function computeBallot(facts: BallotFacts): Ballot {
   if (facts.session.mode !== "enforced") reasons.push("ADVISORY_MODE");
   if (
     !facts.prerequisitesComplete ||
-    !["REVIEWING", "APPROVED"].includes(facts.session.state)
+    !["REVIEWING", "APPROVED", "FINALIZING"].includes(facts.session.state)
   )
     reasons.push("PREREQUISITES_INCOMPLETE");
   const identity = facts.candidate.identity;

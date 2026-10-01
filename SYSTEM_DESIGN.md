@@ -207,7 +207,7 @@ A check result is a host-authored execution record; it is not a model vote. Revi
 | Candidate | `candidates/<id>/manifest.json` and `candidate.diff` | Snapshot service |
 | Check/review result | Candidate `checks/` and `reviews/` | Executor/broker |
 | Ballot | Candidate `ballot.json` | Ballot evaluator |
-| Finalization intent/receipt | `finalization.json`, `receipt.json` | Finalizer |
+| Finalization intent/object/receipt | `finalization.json`, `finalization-object.json`, `receipt.json` | Finalizer |
 | Escalation | `escalation.json` | Orchestrator |
 
 Artifacts are local-user-only and excluded from commits. Retain until explicit cleanup. `clean` deletes owned workspaces, not the audit records by default. Once a resumable session's workspace is deleted, record `workspace_available: false`; `resume` blocks rather than reconstructing missing uncommitted work silently. Cleanup must disclose loss of the only local commit/draft and require explicit confirmation or an explicit noninteractive deletion flag. It must never follow links out of the owned workspace.
@@ -240,7 +240,7 @@ All final checks use disposable copies of the frozen tree. Any content or releva
 
 ### 4.3 Finalization transaction
 
-Persist `transaction_id`, approved tree, parent, commit message, author/committer identity, and timestamps before constructing a commit. With hooks and inherited Git configuration disabled, create the commit object deterministically, journal its OID, and update the private session branch with a compare-and-swap ref operation. Persist the receipt only after checking the tree and parent. Recovery locates or recreates the identical commit object and verifies the expected branch target; it never repeats a broad `git commit` blindly.
+Persist `transaction_id`, approved tree, parent, commit message, author/committer identity, and timestamps before constructing a commit. With hooks and inherited Git configuration disabled, create the commit object deterministically, durably record its OID in `finalization-object.json`, and update the private session branch with a compare-and-swap ref operation. Persist the receipt only after checking the tree and parent. Recovery locates or recreates the identical commit object and verifies the expected branch target; it never repeats a broad `git commit` blindly.
 
 The source checkout may change outside Quorum's lock. Recheck source HEAD and imported-input digests immediately before finalization and record the observation. Quorum cannot lock arbitrary human edits; its safety guarantee is the private approved tree and preservation of source files, not prevention of external edits. Source divergence detected before completion blocks export as a current-base verified result; the original immutable evidence remains inspectable.
 
@@ -248,7 +248,7 @@ The source checkout may change outside Quorum's lock. Recheck source HEAD and im
 
 Use one runtime schema definition per record, infer TypeScript types from it, and generate published JSON Schemas. Do not maintain separate handwritten TypeScript and JSON definitions. Select the schema library during scaffolding and pin it; this design does not prescribe an unverified dependency version.
 
-The implementation uses pinned Zod definitions and generated JSON Schema for every inventory record below, plus model review bodies and host ballot requirements. Cross-field semantic checks remain runtime refinements and are not encoded fully in JSON Schema. [The foundation contract decision](docs/decisions/foundation-contracts.md) specifies canonical serialization version 1 and reducer/replay limits; [the evidence contract decision](docs/decisions/evidence-contracts.md) specifies normalized accounting and host evaluation boundaries. Hash verification, task-graph validation, invocation binding, and ballot computation are implemented against injected ports. Durable storage, actual Git/tree verification, effect authorization, production prerequisite verification, and finalization remain unimplemented; executable record schemas do not establish these capabilities.
+The implementation uses pinned Zod definitions and generated JSON Schema for every inventory record below, plus model review bodies and host ballot requirements. Cross-field semantic checks remain runtime refinements and are not encoded fully in JSON Schema. [The foundation contract decision](docs/decisions/foundation-contracts.md) specifies canonical serialization version 1 and reducer/replay limits; [the evidence contract decision](docs/decisions/evidence-contracts.md) specifies normalized accounting and host evaluation boundaries. Hash verification, task-graph validation, invocation binding, and ballot computation are implemented against injected ports. Durable storage, scoped reads/cleanup, actual Git/tree verification, and recoverable finalization have offline implementations with synthetic host ports. Complete effect authorization, production prerequisite verification, sandboxed validation, and workflow effect reconciliation remain incomplete; executable schemas and fake fixtures do not establish production capabilities.
 
 ### 5.1 Shared rules
 

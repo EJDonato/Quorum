@@ -1,16 +1,28 @@
-import { randomUUID } from "node:crypto";
+import type { SessionState } from "../contracts/session.js";
+import { getIntent } from "./finalization-intent.js";
+import { readRecord } from "../infrastructure/storage/records.js";
 import { failure, type Outcome } from "../contracts/errors.js";
+import {
+  type FinalizationIntent,
+  finalizationObjectSchema,
+} from "../contracts/finalization.js";
 import {
   commitReceiptSchema,
   type CommitReceipt,
 } from "../contracts/receipt.js";
-import { readSourceRepositoryInfo } from "../infrastructure/git/operations.js";
-import { runProcess } from "../infrastructure/process/runner.js";
 import {
-  readArtifact,
-  writeArtifact,
-} from "../infrastructure/storage/artifacts.js";
+  readSourceRepositoryInfo,
+  writeDraftTree,
+} from "../infrastructure/git/operations.js";
+import {
+  constructCommit,
+  installSessionRef,
+  verifyCommit,
+} from "../infrastructure/git/finalization.js";
+import { writeArtifact } from "../infrastructure/storage/artifacts.js";
+import { evaluateBallot } from "./evaluate-ballot.js";
 
+export type BallotEvaluation = Parameters<typeof evaluateBallot>[0];
 export interface FinalizeOptions {
   sessionId: string;
   sourceDir: string;
@@ -21,154 +33,192 @@ export interface FinalizeOptions {
   baseSha: string;
   objectFormat: "sha1" | "sha256";
   evidenceRefs: Array<{ artifact_id: string; digest: string }>;
+  verification?: BallotEvaluation;
+  loadSession?: () => Promise<Outcome<SessionState>>;
   commitMessage?: string;
   authorName?: string;
   authorEmail?: string;
   now?: Date;
   transactionId?: string;
+  // Trusted fault-injection boundary, never a model tool.
+  checkpoint?: (stage: "intent" | "object" | "ref") => Promise<Outcome<void>>;
 }
-
 export interface FinalizeResult {
   receipt: CommitReceipt;
   recovered: boolean;
 }
 
-const ISOLATED_ENV: NodeJS.ProcessEnv = {
-  ...process.env,
-  GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: "/dev/null",
-  GIT_CONFIG_SYSTEM: "/dev/null",
-  GIT_TERMINAL_PROMPT: "0",
-  GIT_ATTR_NOSYSTEM: "1",
-};
+async function authorizeFinalization(options: FinalizeOptions) {
+  if (!options.verification || !options.loadSession)
+    return failure(
+      "CAPABILITY_MISSING",
+      "Finalization requires host evidence and prerequisite verification.",
+    );
+  const session = await options.loadSession();
+  if (!session.ok) return session;
+  const ballot = await evaluateBallot({
+    ...options.verification,
+    session: session.value,
+  });
+  if (!ballot.ok) return ballot;
+  if (
+    !ballot.value.quorum_achieved ||
+    ballot.value.session_id !== options.sessionId ||
+    ballot.value.candidate_id !== options.candidateId ||
+    JSON.stringify(ballot.value.evidence) !==
+      JSON.stringify(options.evidenceRefs)
+  )
+    return failure(
+      "EVIDENCE_INVALID",
+      "Current ballot does not authorize this transaction.",
+    );
+  const candidate = options.verification.candidate;
+  // evaluateBallot has already validated this record; parse again to access typed identity.
+  const { candidateManifestSchema } = await import("../contracts/candidate.js");
+  const parsed = candidateManifestSchema.safeParse(candidate);
+  if (
+    !parsed.success ||
+    parsed.data.identity.tree.oid !== options.treeOid ||
+    parsed.data.identity.base_commit.oid !== options.baseSha ||
+    parsed.data.identity.tree.format !== options.objectFormat
+  )
+    return failure(
+      "EVIDENCE_INVALID",
+      "Transaction differs from the approved candidate.",
+    );
+  const source = await readSourceRepositoryInfo(options.sourceDir);
+  if (!source.ok) return source;
+  if (
+    source.value.headSha !== options.baseSha ||
+    source.value.objectFormat !== options.objectFormat
+  )
+    return failure(
+      "SOURCE_DIVERGED",
+      "Source HEAD diverged before finalization.",
+    );
+  const tree = await writeDraftTree(options.draftDir);
+  if (!tree.ok) return tree;
+  return tree.value.treeOid === options.treeOid
+    ? { ok: true as const, value: undefined }
+    : failure("STALE_INPUT", "Draft tree changed after approval.");
+}
 
 export async function finalizeSession(
   options: FinalizeOptions,
 ): Promise<Outcome<FinalizeResult>> {
-  const sourceInfo = await readSourceRepositoryInfo(options.sourceDir);
-  if (!sourceInfo.ok) return sourceInfo;
-  if (sourceInfo.value.headSha !== options.baseSha) {
-    return failure(
-      "SOURCE_DIVERGED",
-      "Source repository HEAD diverged before finalization.",
-    );
-  }
-
-  const existingReceipt = await readArtifact({
-    baseDir: options.artifactsDir,
-    relativePath: "receipt.json",
-  });
-  if (existingReceipt.ok) {
-    const parsed = commitReceiptSchema.safeParse(
-      JSON.parse(existingReceipt.value.content.toString("utf8")),
-    );
-    if (parsed.success && parsed.data.candidate_id === options.candidateId) {
-      return { ok: true, value: { receipt: parsed.data, recovered: true } };
-    }
-  }
-
-  return executeFinalizationTransaction(options);
+  const authorized = await authorizeFinalization(options);
+  if (!authorized.ok) return authorized;
+  const saved = await getIntent(options);
+  if (!saved.ok) return saved;
+  return finishTransaction(options, saved.value);
 }
 
-async function createCommitAndRef(
+async function finishTransaction(
   options: FinalizeOptions,
-  meta: { msg: string; author: string; email: string; now: string },
-): Promise<Outcome<string>> {
-  const commitRes = await runProcess({
-    executable: "git",
-    args: [
-      "commit-tree",
-      options.treeOid,
-      "-p",
-      options.baseSha,
-      "-m",
-      meta.msg,
-    ],
-    cwd: options.draftDir,
-    env: {
-      ...ISOLATED_ENV,
-      GIT_AUTHOR_NAME: meta.author,
-      GIT_AUTHOR_EMAIL: meta.email,
-      GIT_AUTHOR_DATE: meta.now,
-      GIT_COMMITTER_NAME: meta.author,
-      GIT_COMMITTER_EMAIL: meta.email,
-      GIT_COMMITTER_DATE: meta.now,
-    },
-  });
-  if (!commitRes.ok || commitRes.value.exitCode !== 0) {
-    return failure(
-      "STORAGE_FAILED",
-      "Failed to create deterministic commit object.",
-    );
-  }
-  const commitOid = commitRes.value.stdout.trim();
-  const updateRef = await runProcess({
-    executable: "git",
-    args: ["update-ref", `refs/heads/quorum/${options.sessionId}`, commitOid],
-    cwd: options.draftDir,
-    env: ISOLATED_ENV,
-  });
-  if (!updateRef.ok || updateRef.value.exitCode !== 0) {
-    return failure(
-      "STORAGE_FAILED",
-      "Failed to update session branch reference.",
-    );
-  }
-  return { ok: true, value: commitOid };
-}
-
-async function executeFinalizationTransaction(
-  options: FinalizeOptions,
+  saved: {
+    intent: FinalizationIntent;
+    recovered: boolean;
+  },
 ): Promise<Outcome<FinalizeResult>> {
-  const txId = options.transactionId ?? randomUUID().replaceAll("-", "");
-  const now = (options.now ?? new Date()).toISOString();
-  const msg =
-    options.commitMessage ??
-    `quorum: verified candidate ${options.candidateId}`;
-  const author = options.authorName ?? "Quorum";
-  const email = options.authorEmail ?? "quorum@local";
+  const { intent } = saved;
+  const intentPoint = await checkpoint(options, "intent");
+  if (!intentPoint.ok) return intentPoint;
+  const commit = await constructCommit(options.draftDir, intent);
+  if (!commit.ok) return commit;
+  const verified = await verifyCommit({
+    draftDir: options.draftDir,
+    oid: commit.value,
+    intent,
+  });
+  if (!verified.ok) return verified;
+  const objectRecord = await persistCommitObject(options, intent, commit.value);
+  if (!objectRecord.ok) return objectRecord;
+  const objectPoint = await checkpoint(options, "object");
+  if (!objectPoint.ok) return objectPoint;
+  const receipt = makeReceipt(intent, commit.value);
+  const previous = await readRecord({
+    dir: options.artifactsDir,
+    name: "receipt.json",
+    schema: commitReceiptSchema,
+  });
+  if (!previous.ok) return previous;
+  if (
+    previous.value &&
+    JSON.stringify(previous.value) !== JSON.stringify(receipt)
+  )
+    return failure(
+      "EVIDENCE_INVALID",
+      "Receipt conflicts with recorded intent and Git objects.",
+    );
+  // Recheck both prerequisites and source/tree immediately before the reference effect.
+  const authorized = await authorizeFinalization(options);
+  if (!authorized.ok) return authorized;
+  const ref = await installSessionRef({
+    draftDir: options.draftDir,
+    oid: commit.value,
+    intent,
+    requireExisting: previous.value !== null,
+  });
+  if (!ref.ok) return ref;
+  const refPoint = await checkpoint(options, "ref");
+  if (!refPoint.ok) return refPoint;
+  return publishReceipt(options, receipt, saved.recovered);
+}
 
-  const intent = {
+async function checkpoint(
+  options: FinalizeOptions,
+  stage: "intent" | "object" | "ref",
+): Promise<Outcome<void>> {
+  return options.checkpoint
+    ? options.checkpoint(stage)
+    : { ok: true, value: undefined };
+}
+
+function makeReceipt(intent: FinalizationIntent, oid: string): CommitReceipt {
+  return {
     schema_version: "1.0.0",
-    transaction_id: txId,
-    session_id: options.sessionId,
-    candidate_id: options.candidateId,
-    tree_oid: options.treeOid,
-    base_sha: options.baseSha,
-    timestamp: now,
+    transaction_id: intent.transaction_id,
+    session_id: intent.session_id,
+    candidate_id: intent.candidate_id,
+    commit: { format: intent.tree.format, oid: oid },
+    tree: intent.tree,
+    parent: intent.parent,
+    evidence_refs: intent.evidence_refs,
   };
-  const intentWrite = await writeArtifact({
+}
+
+async function persistCommitObject(
+  options: FinalizeOptions,
+  intent: FinalizationIntent,
+  oid: string,
+) {
+  const record = finalizationObjectSchema.safeParse({
+    schema_version: "1.0.0",
+    transaction_id: intent.transaction_id,
+    commit: { format: intent.tree.format, oid },
+    tree: intent.tree,
+    parent: intent.parent,
+  });
+  if (!record.success)
+    return failure("EVIDENCE_INVALID", "Invalid commit object identity.");
+  return writeArtifact({
     baseDir: options.artifactsDir,
-    relativePath: "finalization.json",
-    content: JSON.stringify(intent, null, 2) + "\n",
+    relativePath: "finalization-object.json",
+    content: JSON.stringify(record.data, null, 2) + "\n",
   });
-  if (!intentWrite.ok) return intentWrite;
+}
 
-  const commitRes = await createCommitAndRef(options, {
-    msg,
-    author,
-    email,
-    now,
-  });
-  if (!commitRes.ok) return commitRes;
-
-  const receipt: CommitReceipt = {
-    schema_version: "1.0.0",
-    transaction_id: txId,
-    session_id: options.sessionId,
-    candidate_id: options.candidateId,
-    commit: { format: options.objectFormat, oid: commitRes.value },
-    tree: { format: options.objectFormat, oid: options.treeOid },
-    parent: { format: options.objectFormat, oid: options.baseSha },
-    evidence_refs: options.evidenceRefs,
-  };
-
-  const receiptWrite = await writeArtifact({
+async function publishReceipt(
+  options: FinalizeOptions,
+  receipt: CommitReceipt,
+  recovered: boolean,
+): Promise<Outcome<FinalizeResult>> {
+  const authorized = await authorizeFinalization(options);
+  if (!authorized.ok) return authorized;
+  const write = await writeArtifact({
     baseDir: options.artifactsDir,
     relativePath: "receipt.json",
     content: JSON.stringify(receipt, null, 2) + "\n",
   });
-  if (!receiptWrite.ok) return receiptWrite;
-
-  return { ok: true, value: { receipt, recovered: false } };
+  return write.ok ? { ok: true, value: { receipt, recovered } } : write;
 }

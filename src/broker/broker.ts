@@ -106,7 +106,10 @@ async function dispatchArtifactTool(
     const p = checksRunInputSchema.safeParse(call.params);
     if (!p.success)
       return failure("INVALID_INPUT", "Invalid checks.run input.");
-    return handleChecksRun(context, p.data);
+    return failure(
+      "CAPABILITY_MISSING",
+      "No isolated check executor is installed; no check evidence was created.",
+    );
   }
   return failure("INVALID_INPUT", "Unknown artifact tool.");
 }
@@ -193,41 +196,4 @@ async function handleScopeRequest(
   });
   if (!write.ok) return write;
   return { ok: true, value: { request_ref: requestRef, status: "SUBMITTED" } };
-}
-
-async function handleChecksRun(
-  context: BrokerSessionContext,
-  data: { check_id: string; input_digest: string },
-): Promise<
-  Outcome<{
-    execution_id: string;
-    status: "PASSED" | "FAILED" | "BLOCKED";
-    evidence_ref: string;
-  }>
-> {
-  const executionId = randomUUID().replaceAll("-", "");
-  const evidenceRef = randomUUID().replaceAll("-", "");
-  const record = {
-    schema_version: "1.0.0",
-    execution_id: executionId,
-    check_id: data.check_id,
-    input_digest: data.input_digest,
-    session_id: context.sessionId,
-    status: "PASSED" as const,
-    timestamp: new Date().toISOString(),
-  };
-  const write = await writeArtifact({
-    baseDir: context.artifactsDir,
-    relativePath: `check-${evidenceRef}.json`,
-    content: JSON.stringify(record, null, 2) + "\n",
-  });
-  if (!write.ok) return write;
-  return {
-    ok: true,
-    value: {
-      execution_id: executionId,
-      status: "PASSED",
-      evidence_ref: evidenceRef,
-    },
-  };
 }

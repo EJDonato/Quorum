@@ -1,0 +1,17 @@
+# Enforcement corrections and next assignment
+
+The M3/M4 review found five implementation gaps: fabricated check success, callback-only approval, projection authority overriding journal history, insufficient scoped read/cleanup checks, and finalization replay ignoring its saved intent. The corrective implementation addresses those paths without introducing real model execution.
+
+Implemented behavior:
+
+- Unavailable checks fail with `CAPABILITY_MISSING` and create no success evidence.
+- Workflow stages and trusted host verification are mandatory. Final approval uses hash-verified candidate-bound checks and independent QA/security review/invocation records. Finalization recomputes the ballot; cached approval is insufficient.
+- Journal replay owns state even when a valid cache is stale. An unterminated tail is discarded before append; malformed newline-terminated records block. Projection publication failure stops new work without erasing durable events.
+- Repository reads/searches enforce grants and reject links. Cleanup checks the actual lease, ownership, and directory identity. Immutable artifact writes permit identical retries and reject conflicting content.
+- Finalization records complete metadata and the constructed object identity, verifies tree/parent, uses compare-and-swap, and recovers the same transaction across intent/object/ref interruptions. Commit requires explicit authorization.
+
+Verification: `npm run check` runs formatting, lint, strict typecheck, size checks, build, offline unit/integration suites, and generated-schema comparison. New regressions are in `tests/integration/enforcement-boundaries.test.ts`, `tests/integration/finalization-safety.test.ts`, and `tests/unit/locks.test.ts`. On 2026-10-02, `npm run check` passed: 36 unit tests and 73 integration tests, with zero failures; formatting, lint, typecheck, size, build, and schema comparison also passed. No live runner probes, container conformance, or model evaluations were run for this correction.
+
+These tests inject fake host prerequisites and model evidence. No production prerequisite verifier, sandboxed check executor, authenticated role submission protocol, or real adapter has been delivered. Host filesystem checks assume host-owned storage and frozen inputs; they do not establish an adversarial concurrent-writer sandbox. Older finalization records without complete pinned metadata are rejected rather than silently upgraded. Full workflow restart, budget/effect accounting, descendant cancellation, and CLI lifecycle operations remain incomplete. M3/M4 therefore remain partial, and M0 capability blockers still apply.
+
+Next assignment: implement the configured validation executor and its container boundary before scheduling real agent mutations. Use pinned images and executable/argument arrays, frozen read-only candidates, bounded output and deadlines, explicit environment allowlists, and no host runtime socket inside execution containers. Produce host-authored `CheckResult` records bound to candidate, command, and environment. Missing images, failed startup, interrupted execution, incomplete reports, absent required tools, and scope/network/secret escapes must fail closed. Wire `checks.run` only through this executor and add negative container tests. Authenticated broker-only runner tools, token ceilings, and descendant cancellation remain independent prerequisites for Antigravity/Codex integration.

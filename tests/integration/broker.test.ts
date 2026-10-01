@@ -257,11 +257,15 @@ await test("broker role.submit, scope.request, checks.run, and artifact.read exe
         input_digest: env.initialDigest,
       },
     });
-    assert.equal(check.ok, true);
-    if (check.ok) {
-      const checkVal = check.value as { status: string; evidence_ref: string };
-      assert.equal(checkVal.status, "PASSED");
-    }
+    assert.equal(check.ok, false);
+    if (!check.ok) assert.equal(check.error.code, "CAPABILITY_MISSING");
+    const { readdir } = await import("node:fs/promises");
+    assert.equal(
+      (await readdir(env.artifactsDir)).some((name) =>
+        name.startsWith("check-"),
+      ),
+      false,
+    );
   } finally {
     await rm(env.workDir, { recursive: true, force: true });
   }

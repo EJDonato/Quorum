@@ -15,7 +15,8 @@ export interface WorktreeStatus {
 }
 
 const ISOLATED_ENV: NodeJS.ProcessEnv = {
-  ...process.env,
+  PATH: process.env.PATH,
+  GIT_NO_REPLACE_OBJECTS: "1",
   GIT_CONFIG_NOSYSTEM: "1",
   GIT_CONFIG_GLOBAL: "/dev/null",
   GIT_CONFIG_SYSTEM: "/dev/null",
@@ -26,7 +27,13 @@ const ISOLATED_ENV: NodeJS.ProcessEnv = {
 async function execGit(args: string[], cwd: string) {
   const result = await runProcess({
     executable: "git",
-    args,
+    args: [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-c",
+      "core.fsmonitor=false",
+      ...args,
+    ],
     cwd,
     env: ISOLATED_ENV,
   });
@@ -61,8 +68,10 @@ export async function readSourceRepositoryInfo(
     ["rev-parse", "--show-object-format"],
     sourceDir,
   );
-  const format =
-    formatRes.ok && formatRes.value.trim() === "sha256" ? "sha256" : "sha1";
+  if (!formatRes.ok) return formatRes;
+  const format = formatRes.value.trim();
+  if (format !== "sha1" && format !== "sha256")
+    return failure("CAPABILITY_MISSING", "Unsupported source object format.");
 
   return {
     ok: true,

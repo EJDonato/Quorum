@@ -79,7 +79,6 @@ export async function readLockFile(path: string): Promise<Outcome<LockRecord>> {
 
 async function resolveContendedLock(
   lockPath: string,
-  now: Date,
   record: LockRecord,
 ): Promise<Outcome<{ nonce: string }>> {
   const existing = await readLockFile(lockPath);
@@ -88,8 +87,7 @@ async function resolveContendedLock(
   }
 
   const holderAlive = isProcessAlive(existing.value.holder_pid);
-  const expired = new Date(existing.value.expires_at).getTime() < now.getTime();
-  if (holderAlive && !expired) {
+  if (holderAlive) {
     return failure(
       "LOCKED",
       `Active process ${existing.value.holder_pid} holds session lock.`,
@@ -142,7 +140,7 @@ export async function acquireCommandLock(
   );
   if (initialWrite.ok) return { ok: true, value: { nonce } };
 
-  return resolveContendedLock(lockPath, now, record);
+  return resolveContendedLock(lockPath, record);
 }
 
 export async function releaseCommandLock(

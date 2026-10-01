@@ -13,7 +13,7 @@ This document defines what to build first, how to divide the work, and what evid
 - [AGENTS.md](AGENTS.md) defines coding principles, size limits, implementation boundaries, and verification practices.
 - This document defines delivery sequence and milestone completion. It does not override the other specifications.
 
-All milestones below remain pending. The implemented subsets are documented in [the foundation report](docs/implementation/foundation.md) and [contracts/ballots report](docs/implementation/contracts-and-ballots.md); neither satisfies a full milestone exit gate. Proposed paths, scripts, and reports beyond that subset are deliverables to create, not existing capabilities. Mark work complete only after its evidence exists.
+M0 remains blocked, and M1–M4 have implemented subsets rather than completed production exit gates. Current evidence is documented in [the foundation report](docs/implementation/foundation.md), [contracts/ballots report](docs/implementation/contracts-and-ballots.md), and [enforcement correction report](docs/implementation/enforcement-corrections.md). Proposed paths, scripts, and reports beyond that subset are deliverables to create, not existing capabilities. Mark work complete only after its evidence exists.
 
 ## 2. Delivery Approach
 
@@ -245,10 +245,10 @@ Historical starting backlog (not full milestone exit gates):
 - [x] Establish the minimal M1 package and offline fixture harness needed for those probes and subsequent engine work.
 - [x] Record observed feasibility results; pin proven versions or identify blockers.
 - [x] Implement the initial schema/error contracts and pure session reducer.
-- [ ] Demonstrate one rejected transition and one crash-replayed transition before connecting real model-driven mutations.
+- [x] Demonstrate one rejected transition and one crash-replayed transition before connecting real model-driven mutations.
 
-Rejected transitions and deterministic supplied-event replay after projection loss are tested. Durable disk crash recovery remains pending. M0 remains blocked; recorded probes do not prove mandatory enforcement capabilities.
+Rejected transitions, durable journal reconstruction, stale-cache rejection, and interrupted finalization recovery are tested offline. Full workflow effect/restart reconciliation remains pending. M0 remains blocked; recorded probes do not prove mandatory enforcement capabilities.
 
-Next: durable intent/completion journaling and artifact storage with fault injection; repository leases and lock ownership; workspace isolation and broker enforcement; then the fake-runner offline vertical slice. Production runner integration still requires observed conformance evidence.
+Next: the sandboxed configured validation executor and its negative container fixtures, followed by authenticated role/broker wiring and workflow effect reconciliation. See the enforcement correction report for acceptance criteria. Production runner integration still requires observed conformance evidence.
 
 This strategy authorizes no implementation or publication by itself. Implementation began after the user's explicit request; publication still requires separate authorization.

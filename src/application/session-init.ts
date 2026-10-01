@@ -1,3 +1,8 @@
+import type {
+  CandidateIdentity,
+  CandidateManifest,
+} from "../contracts/candidate.js";
+import type { BallotEvaluation } from "./finalize.js";
 import { defaultBudgetLimits } from "../contracts/config.js";
 import type { Outcome } from "../contracts/errors.js";
 import type { CommitReceipt } from "../contracts/receipt.js";
@@ -25,6 +30,17 @@ export interface OrchestrationHooks {
   ) => Promise<Outcome<void>>;
 }
 
+export interface WorkflowVerification {
+  preflight: () => Promise<Outcome<void>>;
+  identity: Omit<
+    CandidateIdentity,
+    "schema_version" | "session_id" | "tree" | "base_commit"
+  >;
+  evidence: (
+    candidate: CandidateManifest,
+  ) => Promise<Outcome<Omit<BallotEvaluation, "session" | "candidate">>>;
+}
+
 export interface OrchestratorOptions {
   rootDir: string;
   sourceDir: string;
@@ -32,6 +48,8 @@ export interface OrchestratorOptions {
   baseSha: string;
   objectFormat: "sha1" | "sha256";
   hooks: OrchestrationHooks;
+  verification?: WorkflowVerification;
+  commit?: boolean;
 }
 
 export interface WorkflowContext {
@@ -46,18 +64,19 @@ export function createInitialSessionState(options: {
   sessionId: string;
   baseSha: string;
   objectFormat: "sha1" | "sha256";
+  repositoryId: string;
+  inputDigest: string;
 }): SessionState {
   return {
     schema_version: "1.0.0",
     session_id: options.sessionId,
-    repository_id: "repo000000000000000000000001",
+    repository_id: options.repositoryId,
     base_commit: { format: options.objectFormat, oid: options.baseSha },
     mode: "enforced",
     state: "PREFLIGHT",
     state_sequence: 0,
     current_candidate_id: null,
-    input_digest:
-      "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    input_digest: options.inputDigest,
     limits: { ...defaultBudgetLimits },
     budget: {
       repairs_by_stage: {

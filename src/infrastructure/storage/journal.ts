@@ -34,6 +34,8 @@ export async function appendJournalEvent(
 
   try {
     await mkdir(sessionDir, { recursive: true });
+    const repaired = await repairJournalTail(sessionDir);
+    if (!repaired.ok) return repaired;
     const handle = await open(journalPath, "a", 0o600);
     try {
       await handle.writeFile(line, "utf8");
@@ -95,10 +97,9 @@ export async function readJournalEvents(
     const rawLine = lines[i]?.trim();
     if (!rawLine) continue;
 
-    const isLastLine =
-      i === lines.length - 1 ||
-      (i === lines.length - 2 && !lines[lines.length - 1]?.trim());
-    const parsed = parseJournalLine(rawLine, i, isLastLine);
+    const isLastLine = i === lines.length - 1 && !content.endsWith("\n");
+    if (isLastLine) break; // Unterminated tail is not a durable event.
+    const parsed = parseJournalLine(rawLine, i, false);
     if (!parsed.ok) return parsed;
     if (parsed.value === null) break;
     events.push(parsed.value);
@@ -175,6 +176,37 @@ export async function rebuildSessionState(options: {
   });
   if (!replayed.ok) return replayed;
 
-  await saveStateProjection(options.sessionDir, replayed.value);
+  const projection = await saveStateProjection(
+    options.sessionDir,
+    replayed.value,
+  );
+  if (!projection.ok) return projection;
   return replayed;
+}
+
+// Caller holds the command lock; never append a new event into a torn record.
+async function repairJournalTail(sessionDir: string): Promise<Outcome<void>> {
+  const validated = await readJournalEvents(sessionDir);
+  if (!validated.ok) return validated;
+  const path = join(sessionDir, "events.jsonl");
+  try {
+    const bytes = await readFile(path);
+    if (!bytes.length || bytes.at(-1) === 10)
+      return { ok: true, value: undefined };
+    const handle = await open(path, "r+");
+    try {
+      await handle.truncate(bytes.lastIndexOf(10) + 1);
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    return { ok: true, value: undefined };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT")
+      return { ok: true, value: undefined };
+    return failure(
+      "STORAGE_FAILED",
+      "Unable to reconcile interrupted journal tail.",
+    );
+  }
 }

@@ -1,6 +1,13 @@
+import { sessionStateSchema } from "../../src/contracts/session.js";
+import { candidateManifestSchema } from "../../src/contracts/candidate.js";
+import {
+  fakeWorkflowVerification,
+  fakeStageHooks,
+  fakeEvaluation,
+} from "../fixtures/workflow.js";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -46,7 +53,10 @@ await test("review rejection routes to repair stage and succeeds on retry", asyn
       sessionId,
       baseSha: headSha,
       objectFormat: "sha1",
+      verification: fakeWorkflowVerification(),
+      commit: true,
       hooks: {
+        ...fakeStageHooks(),
         onImplement: () => {
           implementAttempts += 1;
           return Promise.resolve({ ok: true, value: undefined });
@@ -88,7 +98,10 @@ await test("exhausted repair budget blocks the session", async () => {
       sessionId,
       baseSha: headSha,
       objectFormat: "sha1",
+      verification: fakeWorkflowVerification(),
+      commit: true,
       hooks: {
+        ...fakeStageHooks(),
         onReview: () =>
           Promise.resolve(failure("REVIEW_REJECTED", "Continuous QA failure")),
       },
@@ -116,7 +129,10 @@ await test("source divergence detected before finalization blocks completion", a
       sessionId,
       baseSha: headSha,
       objectFormat: "sha1",
+      verification: fakeWorkflowVerification(),
+      commit: true,
       hooks: {
+        ...fakeStageHooks(),
         onReview: async () => {
           // External change to source repo HEAD while session is in flight
           await writeFile(
@@ -155,7 +171,11 @@ await test("finalization recovers identical receipt without duplicate commit", a
       sessionId,
       baseSha: headSha,
       objectFormat: "sha1",
-      hooks: {},
+      verification: fakeWorkflowVerification(),
+      commit: true,
+      hooks: {
+        ...fakeStageHooks(),
+      },
     });
 
     assert.equal(runResult.ok, true);
@@ -180,6 +200,24 @@ await test("finalization recovers identical receipt without duplicate commit", a
       baseSha: headSha,
       objectFormat: "sha1",
       evidenceRefs: firstReceipt.evidence_refs,
+      loadSession: () =>
+        Promise.resolve({
+          ok: true,
+          value: sessionStateSchema.parse({
+            ...runResult.value.state,
+            state: "FINALIZING",
+          }),
+        }),
+      verification: fakeEvaluation(
+        candidateManifestSchema.parse(
+          JSON.parse(
+            await readFile(
+              join(workspaceDir, "candidates", candidateId, "manifest.json"),
+              "utf8",
+            ),
+          ),
+        ),
+      ),
     });
 
     assert.equal(recoveryResult.ok, true);

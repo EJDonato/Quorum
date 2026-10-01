@@ -22,7 +22,14 @@ import { ballotSchema } from "../dist/src/contracts/ballot.js";
 import { ballotRequirementsSchema } from "../dist/src/contracts/ballot-input.js";
 import { commitReceiptSchema } from "../dist/src/contracts/receipt.js";
 
+import {
+  finalizationIntentSchema,
+  finalizationObjectSchema,
+} from "../dist/src/contracts/finalization.js";
+
 const schemas = {
+  FinalizationIntent: finalizationIntentSchema,
+  FinalizationObject: finalizationObjectSchema,
   RepositoryConfig: repositoryConfigSchema,
   SessionState: sessionStateSchema,
   Event: eventSchema,

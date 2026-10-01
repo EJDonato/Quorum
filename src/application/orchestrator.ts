@@ -1,8 +1,7 @@
-import { mkdir } from "node:fs/promises";
+import { executeFinalize } from "./workflow-finalization.js";
+import { ensurePrivateDirectory } from "../infrastructure/workspace/directories.js";
 import { join } from "node:path";
-import type { CandidateManifest } from "../contracts/candidate.js";
 import { failure, type Outcome } from "../contracts/errors.js";
-import type { TransitionInput } from "../contracts/events.js";
 import { canonicalDigest } from "../infrastructure/artifacts/digests.js";
 import {
   acquireCommandLock,
@@ -13,8 +12,7 @@ import {
 } from "../infrastructure/storage/locks.js";
 import { createSessionWorkspace } from "../infrastructure/workspace/manager.js";
 import { freezeCandidate } from "./freeze.js";
-import { finalizeSession } from "./finalize.js";
-import { recordSessionTransition } from "./session-control.js";
+import { advanceWorkflow as advance } from "./workflow-state.js";
 import {
   createInitialSessionState,
   type OrchestratorOptions,
@@ -24,20 +22,36 @@ import {
 
 export type { OrchestratorOptions, SessionRunResult };
 
-function advance(ctx: WorkflowContext, payload: TransitionInput) {
-  return recordSessionTransition({
-    sessionDir: ctx.sessionDir,
-    initial: ctx.initial,
-    payload,
-    ports: ctx.ports,
-  });
-}
-
 export async function runSession(
   options: OrchestratorOptions,
 ): Promise<Outcome<SessionRunResult>> {
+  if (!options.verification)
+    return failure(
+      "CAPABILITY_MISSING",
+      "Host preflight and evidence verification are required.",
+    );
+  const preflight = await options.verification.preflight();
+  if (!preflight.ok) return preflight;
+  if (
+    !options.hooks.onPlan ||
+    !options.hooks.onTestAuthor ||
+    !options.hooks.onImplement ||
+    !options.hooks.onValidate ||
+    !options.hooks.onReview
+  )
+    return failure(
+      "CAPABILITY_MISSING",
+      "All required workflow stages must be installed.",
+    );
   const quorumDir = join(options.rootDir, ".quorum");
-  await mkdir(quorumDir, { recursive: true });
+  try {
+    await ensurePrivateDirectory(options.rootDir, ".quorum");
+  } catch {
+    return failure(
+      "SCOPE_DENIED",
+      "Private session root is linked or unavailable.",
+    );
+  }
   const leasePath = join(quorumDir, "lease.json");
   const lockPath = join(quorumDir, "command.lock");
 
@@ -52,17 +66,38 @@ export async function runSession(
     return lock;
   }
 
+  return runLockedWorkflow(options, {
+    leasePath,
+    lockPath,
+    nonce: lock.value.nonce,
+  });
+}
+
+async function runLockedWorkflow(
+  options: OrchestratorOptions,
+  locks: {
+    leasePath: string;
+    lockPath: string;
+    nonce: string;
+  },
+): Promise<Outcome<SessionRunResult>> {
+  let result: Outcome<SessionRunResult>;
   try {
-    const result = await executeSessionWorkflow(options);
-    await updateSessionLeaseStatus(
-      leasePath,
-      options.sessionId,
-      result.ok ? "COMPLETED" : "BLOCKED",
+    result = await executeSessionWorkflow(options);
+  } catch {
+    result = failure(
+      "STORAGE_FAILED",
+      "Workflow effect failed; work was preserved.",
     );
-    return result;
-  } finally {
-    await releaseCommandLock(lockPath, lock.value.nonce);
   }
+  const status = await updateSessionLeaseStatus(
+    locks.leasePath,
+    options.sessionId,
+    result.ok ? "COMPLETED" : "BLOCKED",
+  );
+  const release = await releaseCommandLock(locks.lockPath, locks.nonce);
+  if (!status.ok) return status;
+  return release.ok ? result : release;
 }
 
 async function executeSessionWorkflow(
@@ -76,11 +111,21 @@ async function executeSessionWorkflow(
   });
   if (!workspace.ok) return workspace;
 
+  const input = canonicalDigest({
+    source: options.sourceDir,
+    base: options.baseSha,
+    identity: options.verification?.identity,
+  });
+  if (!input.ok) return input;
   const ctx: WorkflowContext = {
     options,
     workspace: workspace.value,
     sessionDir: join(options.rootDir, ".quorum", "sessions", options.sessionId),
-    initial: createInitialSessionState(options),
+    initial: createInitialSessionState({
+      ...options,
+      repositoryId: input.value.slice(7),
+      inputDigest: input.value,
+    }),
     ports: { digest: canonicalDigest },
   };
 
@@ -122,28 +167,24 @@ async function requestRepair(
 }
 
 async function freezeCandidateRecord(ctx: WorkflowContext) {
-  const zero =
-    "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+  const identity = ctx.options.verification?.identity;
+  if (!identity)
+    return failure("CAPABILITY_MISSING", "Missing frozen input identity.");
   return freezeCandidate({
     sessionId: ctx.options.sessionId,
     draftDir: ctx.workspace.draftDir,
     artifactsDir: ctx.workspace.workspaceDir,
     baseSha: ctx.options.baseSha,
     objectFormat: ctx.options.objectFormat,
-    policyHash: zero,
-    configDigest: zero,
-    planDigest: zero,
-    acceptanceDigest: zero,
-    contractDigest: zero,
-    testsDigest: zero,
-    envDigest: zero,
-    adapter: {
-      name: "agy",
-      version: "1.2.14",
-      model: "gemini",
-      model_version: "3.8",
-    },
-    personaDigest: zero,
+    policyHash: identity.policy_hash,
+    configDigest: identity.configuration_digest,
+    planDigest: identity.plan_digest,
+    acceptanceDigest: identity.acceptance_digest,
+    contractDigest: identity.contract_digest,
+    testsDigest: identity.tests_digest,
+    envDigest: identity.validation_environment_digest,
+    adapter: identity.adapter,
+    personaDigest: identity.persona_digest,
   });
 }
 
@@ -203,44 +244,4 @@ async function executeExecutionLoop(
     }
     return executeFinalize(ctx, frozen.value);
   }
-}
-
-async function executeFinalize(
-  ctx: WorkflowContext,
-  frozen: { manifest: CandidateManifest; diff: string },
-): Promise<Outcome<SessionRunResult>> {
-  const p6 = await advance(ctx, { type: "BALLOT_APPROVED" });
-  if (!p6.ok) return p6;
-
-  const p7 = await advance(ctx, { type: "FINALIZATION_STARTED" });
-  if (!p7.ok) return p7;
-
-  const artId = "art0000000000000000000000001";
-  const fin = await finalizeSession({
-    sessionId: ctx.options.sessionId,
-    sourceDir: ctx.options.sourceDir,
-    draftDir: ctx.workspace.draftDir,
-    artifactsDir: ctx.workspace.workspaceDir,
-    candidateId: frozen.manifest.candidate_id,
-    treeOid: frozen.manifest.identity.tree.oid,
-    baseSha: ctx.options.baseSha,
-    objectFormat: ctx.options.objectFormat,
-    evidenceRefs: [
-      { artifact_id: artId, digest: frozen.manifest.candidate_id },
-    ],
-  });
-  if (!fin.ok) return fin;
-
-  const p8 = await advance(ctx, { type: "FINALIZATION_COMPLETED" });
-  if (!p8.ok) return p8;
-
-  return {
-    ok: true,
-    value: {
-      sessionId: ctx.options.sessionId,
-      state: p8.value,
-      candidateId: frozen.manifest.candidate_id,
-      receipt: fin.value.receipt,
-    },
-  };
 }

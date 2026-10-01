@@ -104,3 +104,24 @@ await test("session lease prevents two sessions from leasing the same repository
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+await test("expired command lock cannot be stolen from a live owner", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "quorum-live-lock-"));
+  const path = join(dir, "command.lock");
+  try {
+    const first = await acquireCommandLock(path, {
+      sessionId: "live-session",
+      ttlMs: 1,
+      now: new Date("2026-10-01T00:00:00Z"),
+    });
+    assert.ok(first.ok);
+    const stolen = await acquireCommandLock(path, {
+      sessionId: "other-session",
+      now: new Date("2026-10-02T00:00:00Z"),
+    });
+    assert.ok(!stolen.ok && stolen.error.code === "LOCKED");
+    assert.ok((await releaseCommandLock(path, first.value.nonce)).ok);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

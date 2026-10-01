@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { failure, type Outcome } from "../contracts/errors.js";
 import type {
@@ -9,83 +9,73 @@ import type {
   RepoSearchOutput,
   SearchMatch,
 } from "../contracts/tools.js";
-import { runProcess } from "../infrastructure/process/runner.js";
+import {
+  inspectPath,
+  readScopedFile,
+} from "../infrastructure/workspace/scoped-read.js";
 import {
   isToolAllowed,
-  validateSafeRelativePath,
+  isPathAuthorized,
   type BrokerAuthContext,
 } from "./authorizer.js";
 
-const ISOLATED_ENV: NodeJS.ProcessEnv = {
-  ...process.env,
-  GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: "/dev/null",
-  GIT_CONFIG_SYSTEM: "/dev/null",
-  GIT_TERMINAL_PROMPT: "0",
-  GIT_ATTR_NOSYSTEM: "1",
-};
+function readablePath(path: string, context: BrokerAuthContext) {
+  // Protected paths restrict mutations, not granted reads.
+  return isPathAuthorized(path, { ...context, protectedPaths: [] });
+}
 
 export async function readRepoFile(options: {
   draftDir: string;
   input: RepoReadInput;
   context: BrokerAuthContext;
 }): Promise<Outcome<RepoReadOutput>> {
-  const toolCheck = isToolAllowed("repo.read", options.context);
-  if (!toolCheck.ok) return toolCheck;
-
-  const safePath = validateSafeRelativePath(options.input.path);
-  if (!safePath.ok) return safePath;
-
-  const rel = safePath.value;
-  if (rel.startsWith(".git") || rel.startsWith(".quorum")) {
-    return failure(
-      "SCOPE_DENIED",
-      `Access to reserved metadata path ${rel} is denied.`,
-    );
-  }
-
-  const fullPath = join(options.draftDir, rel);
-  try {
-    const raw = await readFile(fullPath, "utf8");
-    const digestHex = createHash("sha256").update(raw).digest("hex");
-    const digest = `sha256:${digestHex}` as const;
-
-    const offset = options.input.offset ?? 0;
-    const limit = options.input.limit ?? 100_000;
-    const slice = raw.slice(offset, offset + limit);
-    const truncated = offset + limit < raw.length;
-
-    return {
-      ok: true,
-      value: {
-        content: slice,
-        digest,
-        truncated,
-      },
-    };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return failure("INVALID_INPUT", `File ${rel} does not exist.`);
-    }
-    return failure("STORAGE_FAILED", `Failed to read file ${rel}.`);
-  }
+  const allowed = isToolAllowed("repo.read", options.context);
+  if (!allowed.ok) return allowed;
+  const path = readablePath(options.input.path, options.context);
+  if (!path.ok) return path;
+  const read = await readScopedFile({
+    root: options.draftDir,
+    relativePath: path.value,
+  });
+  if (!read.ok) return read;
+  const offset = options.input.offset ?? 0;
+  const limit = options.input.limit ?? 100_000;
+  return {
+    ok: true,
+    value: {
+      content: read.value.slice(offset, offset + limit),
+      digest: `sha256:${createHash("sha256").update(read.value).digest("hex")}`,
+      truncated: offset + limit < read.value.length,
+    },
+  };
 }
 
-function parseGrepLine(line: string): SearchMatch | null {
-  const firstColon = line.indexOf(":");
-  if (firstColon === -1) return null;
-  const secondColon = line.indexOf(":", firstColon + 1);
-  if (secondColon === -1) return null;
-
-  const path = line.slice(0, firstColon);
-  const lineNum = Number.parseInt(line.slice(firstColon + 1, secondColon), 10);
-  if (Number.isNaN(lineNum)) return null;
-
-  return {
-    path,
-    line: lineNum,
-    text: line.slice(secondColon + 1),
-  };
+async function collectFiles(root: string, scope: string): Promise<string[]> {
+  const directory = scope === ".";
+  const info = directory ? null : await inspectPath(root, scope);
+  if (info?.isFile()) return [scope];
+  if (info && !info.isDirectory()) throw new Error("Unsupported path");
+  // Revalidate the root even for an all-files grant.
+  if (directory) await inspectPath(root, ".");
+  const pending = [scope];
+  const files: string[] = [];
+  let visited = 0;
+  while (pending.length) {
+    const current = pending.pop();
+    if (current === undefined) break;
+    for (const entry of await readdir(join(root, current), {
+      withFileTypes: true,
+    })) {
+      if (++visited > 10_000) throw new Error("Search exceeds bound");
+      if (entry.name === ".git" || entry.name === ".quorum") continue;
+      const path = current === "." ? entry.name : `${current}/${entry.name}`;
+      const checked = await inspectPath(root, path);
+      if (checked.isDirectory()) pending.push(path);
+      else if (checked.isFile()) files.push(path);
+      else throw new Error("Unsupported path");
+    }
+  }
+  return files.sort();
 }
 
 export async function searchRepoFiles(options: {
@@ -93,58 +83,50 @@ export async function searchRepoFiles(options: {
   input: RepoSearchInput;
   context: BrokerAuthContext;
 }): Promise<Outcome<RepoSearchOutput>> {
-  const toolCheck = isToolAllowed("repo.search", options.context);
-  if (!toolCheck.ok) return toolCheck;
-
-  const limit = options.input.limit ?? 50;
-  const args = [
-    "grep",
-    "-n",
-    "-I",
-    "--untracked",
-    "-e",
-    options.input.query,
-    "--",
-  ];
-  if (options.input.paths && options.input.paths.length > 0) {
-    for (const p of options.input.paths) {
-      const valid = validateSafeRelativePath(p);
-      if (!valid.ok) return valid;
-      args.push(valid.value);
+  const allowed = isToolAllowed("repo.search", options.context);
+  if (!allowed.ok) return allowed;
+  const scopes = options.input.paths?.length
+    ? options.input.paths
+    : options.context.grantedPaths;
+  const files = new Set<string>();
+  try {
+    for (const scope of scopes) {
+      const path = readablePath(scope === "*" ? "." : scope, options.context);
+      if (!path.ok) return path;
+      for (const file of await collectFiles(options.draftDir, path.value))
+        files.add(file);
     }
-  }
-
-  const grepResult = await runProcess({
-    executable: "git",
-    args,
-    cwd: options.draftDir,
-    env: ISOLATED_ENV,
-  });
-  if (!grepResult.ok) return grepResult;
-
-  if (grepResult.value.exitCode === 1) {
-    return { ok: true, value: { matches: [], truncated: false } };
-  }
-  if (grepResult.value.exitCode !== 0) {
+  } catch {
     return failure(
-      "STORAGE_FAILED",
-      `Search failed: ${grepResult.value.stderr}`,
+      "SCOPE_DENIED",
+      "Search scope is linked, unavailable, or exceeds its bound.",
     );
   }
+  return searchContents(options, [...files].sort());
+}
 
-  const lines = grepResult.value.stdout.split("\n").filter(Boolean);
+async function searchContents(
+  options: {
+    draftDir: string;
+    input: RepoSearchInput;
+    context: BrokerAuthContext;
+  },
+  files: string[],
+): Promise<Outcome<RepoSearchOutput>> {
   const matches: SearchMatch[] = [];
-  let truncated = false;
-
-  for (const line of lines) {
-    const match = parseGrepLine(line);
-    if (!match) continue;
-    if (matches.length >= limit) {
-      truncated = true;
-      break;
+  for (const path of files) {
+    const read = await readRepoFile({ ...options, input: { path } });
+    if (!read.ok) return read;
+    if (read.value.truncated)
+      return failure("SCOPE_DENIED", "Search file exceeds read bound.");
+    if (read.value.content.includes("\0")) continue;
+    const lines = read.value.content.split("\n");
+    for (const [index, text] of lines.entries()) {
+      if (!text.includes(options.input.query)) continue;
+      if (matches.length >= (options.input.limit ?? 50))
+        return { ok: true, value: { matches, truncated: true } };
+      matches.push({ path, line: index + 1, text });
     }
-    matches.push(match);
   }
-
-  return { ok: true, value: { matches, truncated } };
+  return { ok: true, value: { matches, truncated: false } };
 }

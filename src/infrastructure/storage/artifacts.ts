@@ -1,6 +1,8 @@
+import { ensurePrivateDirectory } from "../workspace/directories.js";
+import { inspectPath, readScopedBytes } from "../workspace/scoped-read.js";
 import { createHash, randomUUID } from "node:crypto";
-import { chmod, mkdir, open, readFile, rename } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { chmod, link, open, unlink } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 import { failure, type Outcome } from "../../contracts/errors.js";
 import { repositoryPath } from "../../contracts/primitives.js";
 
@@ -51,7 +53,9 @@ export async function writeArtifact(options: {
   const tempPath = `${targetPath}.tmp.${randomUUID().replaceAll("-", "")}`;
 
   try {
-    await mkdir(parentDir, { recursive: true });
+    const parent = relative(resolve(options.baseDir), parentDir);
+    if (parent) await ensurePrivateDirectory(options.baseDir, parent);
+    else await inspectPath(options.baseDir, ".");
     const handle = await open(tempPath, "wx", 0o600);
     try {
       await handle.writeFile(options.content);
@@ -60,7 +64,19 @@ export async function writeArtifact(options: {
       await handle.close();
     }
     await chmod(tempPath, 0o444);
-    await rename(tempPath, targetPath);
+    try {
+      await link(tempPath, targetPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const existing = await readArtifact({
+        baseDir: options.baseDir,
+        relativePath: options.relativePath,
+        expectedDigest: digest,
+      });
+      if (!existing.ok) return existing;
+    } finally {
+      await unlink(tempPath);
+    }
     await syncDirectory(parentDir);
     return {
       ok: true,
@@ -87,7 +103,12 @@ export async function readArtifact(options: {
   if (!safe.ok) return safe;
 
   try {
-    const content = await readFile(safe.value);
+    const read = await readScopedBytes({
+      root: options.baseDir,
+      relativePath: options.relativePath,
+    });
+    if (!read.ok) return read;
+    const content = read.value;
     const digest = computeSha256(content);
     if (
       options.expectedDigest !== undefined &&

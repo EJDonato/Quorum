@@ -7,7 +7,6 @@ import type { ReplayPorts } from "./replay.js";
 import {
   appendJournalEvent,
   readJournalEvents,
-  readStateProjection,
   rebuildSessionState,
   saveStateProjection,
 } from "../infrastructure/storage/journal.js";
@@ -21,10 +20,6 @@ export async function loadOrReconstructState(options: {
   initial: SessionState;
   ports: SessionControlPorts;
 }): Promise<Outcome<SessionState>> {
-  const cached = await readStateProjection(options.sessionDir);
-  if (cached.ok && cached.value !== null) {
-    return { ok: true, value: cached.value };
-  }
   return rebuildSessionState({
     sessionDir: options.sessionDir,
     initial: options.initial,
@@ -73,7 +68,8 @@ export async function recordSessionTransition(options: {
   const write = await appendJournalEvent(options.sessionDir, event);
   if (!write.ok) return write;
 
-  await saveStateProjection(options.sessionDir, next.value);
+  const projection = await saveStateProjection(options.sessionDir, next.value);
+  if (!projection.ok) return projection;
   return { ok: true, value: next.value };
 }
 

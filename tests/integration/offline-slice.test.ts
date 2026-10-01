@@ -1,3 +1,7 @@
+import {
+  fakeWorkflowVerification,
+  fakeStageHooks,
+} from "../fixtures/workflow.js";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -46,7 +50,10 @@ await test("offline vertical slice completes end-to-end with matching commit tre
       sessionId,
       baseSha: headSha,
       objectFormat: "sha1",
+      verification: fakeWorkflowVerification(),
+      commit: true,
       hooks: {
+        ...fakeStageHooks(),
         onPlan: async (workspace) => {
           const plan = createFakePlan(sessionId);
           await writeFile(

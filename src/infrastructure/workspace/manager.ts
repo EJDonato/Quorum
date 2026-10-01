@@ -1,4 +1,5 @@
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { ensurePrivateDirectory } from "./directories.js";
+import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { z } from "zod";
 import { failure, type Outcome } from "../../contracts/errors.js";
@@ -49,7 +50,7 @@ export function validateSafeWorkspacePath(
   const resolvedTarget = resolve(targetPath);
   const rel = relative(resolvedRoot, resolvedTarget);
 
-  if (rel.startsWith("..") || isAbsolute(rel)) {
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
     return failure("SCOPE_DENIED", "Path escapes designated workspace root.");
   }
   return { ok: true, value: resolvedTarget };
@@ -62,6 +63,8 @@ export async function createSessionWorkspace(options: {
   baseSha: string;
   now?: Date;
 }): Promise<Outcome<WorkspacePaths>> {
+  if (!opaqueId.safeParse(options.sessionId).success)
+    return failure("INVALID_INPUT", "Invalid workspace session ID.");
   const paths = getWorkspacePaths(options.rootDir, options.sessionId);
   const safeCheck = validateSafeWorkspacePath(
     options.rootDir,
@@ -70,8 +73,14 @@ export async function createSessionWorkspace(options: {
   if (!safeCheck.ok) return safeCheck;
 
   try {
-    await mkdir(paths.metaDir, { recursive: true });
-    await mkdir(paths.draftDir, { recursive: true });
+    await ensurePrivateDirectory(
+      options.rootDir,
+      `.quorum/workspaces/${options.sessionId}/meta`,
+    );
+    await ensurePrivateDirectory(
+      options.rootDir,
+      `.quorum/workspaces/${options.sessionId}/draft`,
+    );
 
     const draftInit = await createIsolatedDraft({
       sourceDir: options.sourceDir,
@@ -128,29 +137,4 @@ export async function readWorkspaceMeta(
   }
 }
 
-export async function cleanSessionWorkspace(options: {
-  rootDir: string;
-  sessionId: string;
-  leaseStatus?: string;
-}): Promise<Outcome<void>> {
-  if (options.leaseStatus === "ACTIVE") {
-    return failure("LOCKED", "Cannot clean workspace of an active session.");
-  }
-
-  const paths = getWorkspacePaths(options.rootDir, options.sessionId);
-  const safeCheck = validateSafeWorkspacePath(
-    options.rootDir,
-    paths.workspaceDir,
-  );
-  if (!safeCheck.ok) return safeCheck;
-
-  try {
-    const info = await stat(paths.draftDir).catch(() => null);
-    if (info) {
-      await rm(paths.draftDir, { recursive: true, force: true });
-    }
-    return { ok: true, value: undefined };
-  } catch {
-    return failure("STORAGE_FAILED", "Failed to clean session workspace.");
-  }
-}
+export { cleanSessionWorkspace } from "./cleanup.js";
