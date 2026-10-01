@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "descendant_cancellation_probe",
+  "recorded_at": "2026-10-01T14:45:54.596Z",
+  "process_group_cleanup_effective": true,
+  "detached_escape_observed": true,
+  "container_boundary_required": true
+}
