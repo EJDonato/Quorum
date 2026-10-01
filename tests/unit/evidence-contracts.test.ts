@@ -127,6 +127,13 @@ await test("invocation binding rejects foreign identity, missing accounting and 
   );
   assert.ok(result.usage);
   assert.equal(
+    invocationResultSchema.safeParse({
+      ...result,
+      usage: { ...result.usage, reasoning_tokens: 6 },
+    }).success,
+    false,
+  );
+  assert.equal(
     validateInvocationResult(req, {
       ...result,
       usage: { ...result.usage, charged_tokens: 101 },

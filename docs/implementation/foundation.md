@@ -22,3 +22,5 @@ Not run: live runner/conformance probes, container checks, model evaluations, an
 Pending: safe `init` and personas, remaining motion/candidate/invocation/check/review/ballot/receipt contracts, DAG validation, clock/ID boundary implementations, durable journal/artifacts, leases/locks, complete resume reconciliation, workspace isolation, broker, exact-tree candidates, evidence evaluation, finalization, and both runner adapters. Configuration validation is structural and cannot certify command safety, runtime capabilities, or an approval. No verified workflow is available.
 
 Next cohesive slice: finish the remaining executable contract definitions and DAG validation, then add durable intent/completion journaling with fault injection and lock ownership verification before exposing session mutation commands.
+
+Follow-up: [contracts and ballots](contracts-and-ballots.md) implements the remaining inventory schemas, DAG validation, and host decision logic. The pending list above describes the historical first slice; durable storage and the runnable workflow remain pending.

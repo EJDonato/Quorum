@@ -8,7 +8,7 @@
 
 Quorum is a local CLI application, not a website. Its user interface consists of commands, terminal views, JSON responses, and exported artifacts. No screen routing or `SITE_MAP.md` is required. Section 7 defines command navigation and output components instead.
 
-The PRD owns product requirements. This document specifies implementation boundaries and contracts; [AGENTS.md](AGENTS.md) instructs the AI agent implementing them. The [foundation report](docs/implementation/foundation.md) identifies the currently implemented subset. Paths and interfaces beyond that subset remain proposed, not claims that code exists.
+The PRD owns product requirements. This document specifies implementation boundaries and contracts; [AGENTS.md](AGENTS.md) instructs the AI agent implementing them. The [foundation report](docs/implementation/foundation.md) and [contracts/ballots report](docs/implementation/contracts-and-ballots.md) identify the currently implemented subset. Paths and interfaces beyond that subset remain proposed, not claims that code exists.
 
 | Decision | MVP choice | Reason |
 | :--- | :--- | :--- |
@@ -248,7 +248,7 @@ The source checkout may change outside Quorum's lock. Recheck source HEAD and im
 
 Use one runtime schema definition per record, infer TypeScript types from it, and generate published JSON Schemas. Do not maintain separate handwritten TypeScript and JSON definitions. Select the schema library during scaffolding and pin it; this design does not prescribe an unverified dependency version.
 
-The initial implementation uses pinned Zod definitions and generated JSON Schema for configuration, session, errors, and transition/events. Cross-field semantic checks remain runtime refinements. [The contract decision](docs/decisions/foundation-contracts.md) specifies canonical serialization version 1 and current reducer/replay limits. Remaining inventory records below are not implemented yet and must be validated before their use cases are connected.
+The implementation uses pinned Zod definitions and generated JSON Schema for every inventory record below, plus model review bodies and host ballot requirements. Cross-field semantic checks remain runtime refinements and are not encoded fully in JSON Schema. [The foundation contract decision](docs/decisions/foundation-contracts.md) specifies canonical serialization version 1 and reducer/replay limits; [the evidence contract decision](docs/decisions/evidence-contracts.md) specifies normalized accounting and host evaluation boundaries. Hash verification, task-graph validation, invocation binding, and ballot computation are implemented against injected ports. Durable storage, actual Git/tree verification, effect authorization, production prerequisite verification, and finalization remain unimplemented; executable record schemas do not establish these capabilities.
 
 ### 5.1 Shared rules
 

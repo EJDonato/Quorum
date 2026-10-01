@@ -93,6 +93,7 @@ export const usageSchema = z
   .superRefine((usage, context) => {
     if (
       usage.cached_input_tokens > usage.input_tokens ||
+      usage.reasoning_tokens > usage.output_tokens ||
       usage.charged_tokens < usage.input_tokens + usage.output_tokens ||
       !Number.isSafeInteger(usage.input_tokens + usage.output_tokens)
     ) {

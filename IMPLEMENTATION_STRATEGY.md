@@ -1,6 +1,6 @@
 # Quorum Implementation Strategy
 
-**Status:** Execution plan; initial foundation subset implemented, milestones remain incomplete\
+**Status:** Execution plan; foundation contracts and host decision subset implemented, milestones remain incomplete\
 **Baseline:** PRD version 2.2.0\
 **Scope:** First usable, enforced CLI release
 
@@ -13,7 +13,7 @@ This document defines what to build first, how to divide the work, and what evid
 - [AGENTS.md](AGENTS.md) defines coding principles, size limits, implementation boundaries, and verification practices.
 - This document defines delivery sequence and milestone completion. It does not override the other specifications.
 
-All milestones below remain pending. The initial implemented subset is documented in [the foundation report](docs/implementation/foundation.md); it does not satisfy a full milestone exit gate. Proposed paths, scripts, and reports beyond that subset are deliverables to create, not existing capabilities. Mark work complete only after its evidence exists.
+All milestones below remain pending. The implemented subsets are documented in [the foundation report](docs/implementation/foundation.md) and [contracts/ballots report](docs/implementation/contracts-and-ballots.md); neither satisfies a full milestone exit gate. Proposed paths, scripts, and reports beyond that subset are deliverables to create, not existing capabilities. Mark work complete only after its evidence exists.
 
 ## 2. Delivery Approach
 
@@ -238,13 +238,17 @@ Do not assign calendar delivery dates before M0 findings and the first offline s
 
 ## 8. Immediate Starting Backlog
 
-The first implementation session should begin with these tasks, in order:
+Historical starting backlog (not full milestone exit gates):
 
-- [ ] Confirm repository state and reread the three governing specifications.
-- [ ] Define reproducible M0 probes and record the exact unverified capabilities.
-- [ ] Establish the minimal M1 package and offline fixture harness needed for those probes and subsequent engine work.
-- [ ] Record observed feasibility results; pin proven versions or identify blockers.
-- [ ] Implement the initial schema/error contracts and pure session reducer.
+- [x] Confirm repository state and reread the three governing specifications.
+- [x] Define reproducible M0 probes and record the exact unverified capabilities.
+- [x] Establish the minimal M1 package and offline fixture harness needed for those probes and subsequent engine work.
+- [x] Record observed feasibility results; pin proven versions or identify blockers.
+- [x] Implement the initial schema/error contracts and pure session reducer.
 - [ ] Demonstrate one rejected transition and one crash-replayed transition before connecting real model-driven mutations.
+
+Rejected transitions and deterministic supplied-event replay after projection loss are tested. Durable disk crash recovery remains pending. M0 remains blocked; recorded probes do not prove mandatory enforcement capabilities.
+
+Next: durable intent/completion journaling and artifact storage with fault injection; repository leases and lock ownership; workspace isolation and broker enforcement; then the fake-runner offline vertical slice. Production runner integration still requires observed conformance evidence.
 
 This strategy authorizes no implementation or publication by itself. Implementation began after the user's explicit request; publication still requires separate authorization.
