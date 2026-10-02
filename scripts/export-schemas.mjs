@@ -27,7 +27,14 @@ import {
   finalizationObjectSchema,
 } from "../dist/src/contracts/finalization.js";
 
+import {
+  validationIntentSchema,
+  validationReportSchema,
+} from "../dist/src/contracts/validation.js";
+
 const schemas = {
+  ValidationIntent: validationIntentSchema,
+  ValidationReport: validationReportSchema,
   FinalizationIntent: finalizationIntentSchema,
   FinalizationObject: finalizationObjectSchema,
   RepositoryConfig: repositoryConfigSchema,

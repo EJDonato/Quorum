@@ -28,7 +28,8 @@
     "probe:controls": "npm run build && node scripts/probe-controls.mjs",
     "probe:container": "npm run build && node scripts/probe-container.mjs",
     "probe:cancellation": "npm run build && node scripts/probe-cancellation.mjs",
-    "eval": "node scripts/unavailable.mjs evaluation"
+    "eval": "node scripts/unavailable.mjs evaluation",
+    "test:validation:container": "npm run build && node scripts/test-validation-container.mjs"
   },
   "dependencies": {
     "zod": "4.6.5"

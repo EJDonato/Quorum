@@ -1,13 +1,14 @@
+import { executeGrantedCheck } from "./checks.js";
 import { randomUUID } from "node:crypto";
 import { failure, type Outcome } from "../contracts/errors.js";
 import {
   artifactReadInputSchema,
-  checksRunInputSchema,
   draftApplyPatchInputSchema,
   repoReadInputSchema,
   repoSearchInputSchema,
   roleSubmitInputSchema,
   scopeRequestInputSchema,
+  type ChecksRunOutput,
 } from "../contracts/tools.js";
 import {
   readArtifact,
@@ -22,6 +23,14 @@ import {
 import { applyDraftPatch } from "./patch.js";
 import { readRepoFile, searchRepoFiles } from "./repo-tools.js";
 
+export interface BrokerCheckPort {
+  sessionId: string;
+  invocationId: string;
+  inputDigest: string;
+  grantedCheckIds: string[];
+  run: (checkId: string) => Promise<Outcome<ChecksRunOutput>>;
+}
+
 export interface BrokerSessionContext {
   sessionId: string;
   invocationId: string;
@@ -31,6 +40,7 @@ export interface BrokerSessionContext {
   artifactsDir: string;
   grantedPaths: string[];
   protectedPaths: string[];
+  checks?: BrokerCheckPort;
 }
 
 export type BrokerToolCall =
@@ -103,13 +113,7 @@ async function dispatchArtifactTool(
     return handleScopeRequest(context.artifactsDir, p.data);
   }
   if (call.tool === "checks.run") {
-    const p = checksRunInputSchema.safeParse(call.params);
-    if (!p.success)
-      return failure("INVALID_INPUT", "Invalid checks.run input.");
-    return failure(
-      "CAPABILITY_MISSING",
-      "No isolated check executor is installed; no check evidence was created.",
-    );
+    return executeGrantedCheck(context, call.params);
   }
   return failure("INVALID_INPUT", "Unknown artifact tool.");
 }

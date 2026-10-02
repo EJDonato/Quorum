@@ -26,6 +26,10 @@ const commandSchema = z.strictObject({
     "scanner",
     "fuzz",
   ]),
+  report_format: z.literal("quorum-json-v1").optional(),
+  fuzz: z
+    .strictObject({ seed: count, cases_required: positiveCount.max(1_000_000) })
+    .optional(),
   executable: z
     .string()
     .min(1)
