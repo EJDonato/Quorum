@@ -34,8 +34,15 @@ export async function handleFoundationCommand(
   const config = await inspectConfiguration(state.configPath, {
     read: io.readConfig,
   });
-  if (!config.ok)
-    return { text: `Foundation drafting blocked: ${config.error.message}` };
+  if (!config.ok) {
+    const hint =
+      config.error.code === "STORAGE_FAILED"
+        ? `\nHint: Run '/init' to create ${state.configPath} before drafting foundation documents.`
+        : "";
+    return {
+      text: `Foundation drafting blocked: ${config.error.message}${hint}`,
+    };
+  }
 
   const draft = createDraftPort({
     state,

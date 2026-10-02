@@ -86,6 +86,34 @@ await test("/foundation does not call a runner when a target document exists", a
   }
 });
 
+await test("/foundation reports helpful hint when configuration is missing", async () => {
+  const root = await mkdtemp(
+    join(tmpdir(), "quorum-repl-foundation-missing-cfg-"),
+  );
+  try {
+    const io: ReplIo = {
+      readConfig: readConfiguration,
+      directPrompt: () => Promise.resolve(assert.fail("runner must not run")),
+    };
+    const state: ReplState = {
+      configPath: join(root, ".quorum", "config.json"),
+      activeRunner: "codex",
+      rootDir: root,
+      activeSessionId: null,
+      exitRequested: false,
+    };
+    const output = await dispatchReplLine(
+      state,
+      io,
+      "/foundation Build a to do app",
+    );
+    assert.match(output.text, /Foundation drafting blocked/);
+    assert.match(output.text, /Run '\/init' to create/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 function createState(rootDir: string): ReplState {
   return {
     configPath: fixture,
