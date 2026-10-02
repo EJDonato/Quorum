@@ -5,15 +5,14 @@ import type {
   DirectPromptResponse,
 } from "../../application/direct-prompt.js";
 import { failure, type Outcome } from "../../contracts/errors.js";
+import { runProcess, type ProcessRunResult } from "../process/runner.js";
 import {
-  runProcess,
-  type ProcessRunOptions,
-  type ProcessRunResult,
-} from "../process/runner.js";
+  codexEventSchema,
+  runDirectCompletion,
+  type DirectPromptProcess,
+} from "./direct-prompt-progress.js";
 
-type ProcessPort = (
-  options: ProcessRunOptions,
-) => Promise<Outcome<ProcessRunResult>>;
+type ProcessPort = DirectPromptProcess;
 
 const agyResultSchema = z.strictObject({
   conversation_id: z.string(),
@@ -37,30 +36,30 @@ const agyErrorSchema = z
   })
   .passthrough();
 
-const codexEventSchema = z.object({
-  type: z.string(),
-  item: z.object({ type: z.string(), text: z.string().optional() }).optional(),
-});
-
 export function createDirectPromptRunner(
   process: ProcessPort = runProcess,
 ): DirectPromptPort {
-  return async (request, signal) => {
+  return async (request, signal, onProgress) => {
     const valid = validateRequest(request);
     if (!valid.ok) return valid;
+    onProgress?.({ phase: "checking", message: "Checking runner version." });
     const version = await executeVersion(request, process, signal);
     if (!version.ok) return version;
-    const completion = await process({
-      executable: request.executable,
-      args: promptArgs(request),
-      cwd: request.cwd,
-      timeoutMs: request.timeoutMs,
-      maxOutputBytes: 1_048_576,
+    onProgress?.({
+      phase: "starting",
+      message: `Starting ${request.model} in read-only mode.`,
+    });
+    const completion = await runDirectCompletion({
+      request,
+      process,
       ...(signal ? { signal } : {}),
+      ...(onProgress ? { onProgress } : {}),
     });
     if (!completion.ok) return completion;
+    onProgress?.({ phase: "finishing", message: "Processing response." });
     const text = parseCompletion(request.runner, completion.value);
     if (!text.ok) return text;
+    onProgress?.({ phase: "finishing", message: "Response ready." });
     return {
       ok: true,
       value: {
@@ -120,34 +119,6 @@ function extractVersion(
       ? /^(?:codex-cli )?(\d+\.\d+\.\d+)\s*$/u
       : /^(\d+\.\d+\.\d+)\s*$/u;
   return expression.exec(result.stdout)?.[1] ?? null;
-}
-
-function promptArgs(request: DirectPromptRequest): string[] {
-  if (request.runner === "agy")
-    return [
-      "--sandbox",
-      "--mode",
-      "plan",
-      "--model",
-      request.model,
-      "--print-timeout",
-      `${Math.ceil(request.timeoutMs / 1_000)}s`,
-      "--output-format",
-      "json",
-      "--print",
-      request.prompt,
-    ];
-  return [
-    "exec",
-    "--model",
-    request.model,
-    "--skip-git-repo-check",
-    "--sandbox",
-    "read-only",
-    "--ephemeral",
-    "--json",
-    request.prompt,
-  ];
 }
 
 function parseCompletion(

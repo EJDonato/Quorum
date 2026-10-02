@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDirectPromptRunner } from "../../src/infrastructure/adapters/direct-prompt.js";
 import type { Outcome } from "../../src/contracts/errors.js";
-import type {
-  ProcessRunOptions,
-  ProcessRunResult,
+import {
+  runProcess,
+  type ProcessRunOptions,
+  type ProcessRunResult,
 } from "../../src/infrastructure/process/runner.js";
 
 type ProcessPort = (
@@ -74,6 +75,7 @@ await test("direct Agy prompt verifies version and uses bounded read-only argume
 
 await test("direct Codex prompt accepts one completed agent message", async () => {
   const calls: ProcessRunOptions[] = [];
+  const progress: string[] = [];
   const events = [
     { type: "thread.started", thread_id: "thread-1" },
     {
@@ -84,6 +86,19 @@ await test("direct Codex prompt accepts one completed agent message", async () =
   ];
   const process: ProcessPort = (options) => {
     calls.push(options);
+    if (calls.length === 2) {
+      options.onStdoutLine?.('{"type":"thread.started"}');
+      options.onStdoutLine?.('{"type":"turn.started"}');
+      options.onStdoutLine?.(
+        JSON.stringify({
+          type: "item.started",
+          item: {
+            type: "command_execution",
+            command: "sed -n '1,40p' 'README.md'",
+          },
+        }),
+      );
+    }
     return Promise.resolve(
       calls.length === 1
         ? success("codex-cli 0.159.3\n")
@@ -92,15 +107,19 @@ await test("direct Codex prompt accepts one completed agent message", async () =
   };
   const run = createDirectPromptRunner(process);
 
-  const result = await run({
-    runner: "codex",
-    executable: "codex",
-    expectedVersion: "0.159.3",
-    model: "gpt-6-sol",
-    prompt: "Reply with QUORUM_OK.",
-    cwd: "/repo",
-    timeoutMs: 60_000,
-  });
+  const result = await run(
+    {
+      runner: "codex",
+      executable: "codex",
+      expectedVersion: "0.159.3",
+      model: "gpt-6-sol",
+      prompt: "Reply with QUORUM_OK.",
+      cwd: "/repo",
+      timeoutMs: 60_000,
+    },
+    undefined,
+    (event) => progress.push(event.message),
+  );
 
   assert.equal(result.ok, true);
   if (!result.ok) return;
@@ -116,6 +135,34 @@ await test("direct Codex prompt accepts one completed agent message", async () =
     "--json",
     "Reply with QUORUM_OK.",
   ]);
+  assert.deepEqual(progress, [
+    "Checking runner version.",
+    "Starting gpt-6-sol in read-only mode.",
+    "Runner session started.",
+    "Analyzing the request.",
+    "Reading files: README.md",
+    "Processing response.",
+    "Response ready.",
+  ]);
+});
+
+await test("process runner streams lines without changing captured output", async () => {
+  const lines: string[] = [];
+  const result = await runProcess({
+    executable: process.execPath,
+    args: [
+      "-e",
+      "process.stdout.write('alpha\\nbe'); setTimeout(() => process.stdout.end('ta'), 5)",
+    ],
+    cwd: process.cwd(),
+    timeoutMs: 1_000,
+    onStdoutLine: (line) => lines.push(line),
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.value.stdout, "alpha\nbeta");
+  assert.deepEqual(lines, ["alpha", "beta"]);
 });
 
 await test("direct prompt stops before generation on version mismatch", async () => {

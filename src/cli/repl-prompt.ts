@@ -16,15 +16,24 @@ export async function handlePromptSubmission(
     return { text: `Direct prompt blocked: ${config.error.message}` };
   const identity = directRunnerIdentity(state, config.value.adapter);
   const invoke = io.directPrompt ?? createDirectPromptRunner();
-  const result = await invoke({
-    runner: state.activeRunner,
-    executable: state.activeRunner,
-    expectedVersion: identity.version,
-    model: identity.model,
-    prompt: cleanPrompt,
-    cwd: state.rootDir,
-    timeoutMs: Math.min(config.value.budgets.invocation_timeout_ms, 120_000),
-  });
+  const result = await invoke(
+    {
+      runner: state.activeRunner,
+      executable: state.activeRunner,
+      expectedVersion: identity.version,
+      model: identity.model,
+      prompt: cleanPrompt,
+      cwd: state.rootDir,
+      timeoutMs: Math.min(config.value.budgets.invocation_timeout_ms, 120_000),
+    },
+    undefined,
+    (progress) => {
+      const output = io.stdout ?? process.stdout;
+      output.write(
+        `[${state.activeRunner}] ${sanitizeText(progress.message)}\n`,
+      );
+    },
+  );
   if (!result.ok)
     return {
       text: sanitizeText(

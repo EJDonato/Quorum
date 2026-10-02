@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PassThrough } from "node:stream";
 import test from "node:test";
 import { resolve } from "node:path";
 import { readConfiguration } from "../../src/infrastructure/configuration.js";
@@ -13,11 +14,19 @@ const fixture = resolve("tests/fixtures/config.json");
 await test("dispatchReplLine sends freeform text to direct read-only runner", async () => {
   let promptSeen = "";
   let timeoutSeen = 0;
+  const stdout = new PassThrough();
+  let progressOutput = "";
+  stdout.on("data", (chunk: Buffer) => {
+    progressOutput += chunk.toString("utf8");
+  });
   const io: ReplIo = {
     readConfig: readConfiguration,
-    directPrompt: (request) => {
+    stdout,
+    directPrompt: (request, _signal, onProgress) => {
       promptSeen = request.prompt;
       timeoutSeen = request.timeoutMs;
+      onProgress?.({ phase: "checking", message: "Checking runner version." });
+      onProgress?.({ phase: "tool", message: "Reading files: README.md" });
       return Promise.resolve({
         ok: true,
         value: {
@@ -40,6 +49,8 @@ await test("dispatchReplLine sends freeform text to direct read-only runner", as
   const res = await dispatchReplLine(state, io, "explain how quorum works");
   assert.equal(promptSeen, "explain how quorum works");
   assert.equal(timeoutSeen, 120_000);
+  assert.match(progressOutput, /\[agy\] Checking runner version/);
+  assert.match(progressOutput, /\[agy\] Reading files: README.md/);
   assert.match(res.text, /agy response/);
   assert.match(res.text, /Quorum coordinates revision-bound coding roles/);
   assert.match(res.text, /not Quorum approval evidence/);

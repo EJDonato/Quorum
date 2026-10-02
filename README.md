@@ -27,8 +27,11 @@ After `npm run build`, start the interactive terminal with
 `node dist/src/cli/main.js`. Plain text is sent to the active `agy` or `codex`
 runner in read-only direct mode and prints the runner's response. Use
 `/runner agy` or `/runner codex` to switch runners. Direct responses are not
-Quorum approval evidence. `/run <task>` is reserved for the enforced council
-workflow and fails closed while its production runner transport is incomplete.
+Quorum approval evidence. While a prompt runs, the terminal prints bounded
+progress messages and safe summaries of Codex read-only activity; Antigravity
+shows lifecycle messages and elapsed-time heartbeats. `/run <task>` is reserved
+for the enforced council workflow and fails closed while its production runner
+transport is incomplete.
 
 The fixture uses deliberately unverified adapter/model/image identifiers. `config` validates structure and reports no runtime capability. `doctor` always exits 3 with unverified capabilities; neither command executes configured programs or makes model calls. Other workflow commands, including `init`, report that they are unimplemented. An application-level offline workflow and recoverable private Git finalization exist with explicitly fake host ports; no production coding workflow is available.
 
