@@ -35,7 +35,12 @@ links in runner responses. The loading verb changes every ten seconds, tool
 activity updates in place, and final answers stream in fast readable chunks.
 Piped output remains plain and immediate. `/run <task>` is reserved for the
 enforced council workflow and fails closed while its production runner transport
-is incomplete.
+is incomplete. In a new project, run
+`/foundation <requirements>` to draft `PRD.md`, `SYSTEM_DESIGN.md`, and `PLAN.md`
+in three ordered read-only passes. The command refuses to overwrite any of those
+files, publishes only after all three drafts validate, and labels them as
+reviewable drafts rather than approval evidence. Review the documents before
+starting `/run`.
 
 The fixture uses deliberately unverified adapter/model/image identifiers. `config` validates structure and reports no runtime capability. `doctor` always exits 3 with unverified capabilities; neither command executes configured programs or makes model calls. Other workflow commands, including `init`, report that they are unimplemented. An application-level offline workflow and recoverable private Git finalization exist with explicitly fake host ports; no production coding workflow is available.
 

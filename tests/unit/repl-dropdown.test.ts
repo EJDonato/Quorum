@@ -30,6 +30,12 @@ await test("getMatchingSlashCommands filters commands dynamically as user types"
     ["/doctor"],
   );
 
+  const foundationMatches = getMatchingSlashCommands("/f");
+  assert.deepEqual(
+    foundationMatches.map((match) => match.name),
+    ["/foundation"],
+  );
+
   const nonMatches = getMatchingSlashCommands("/unknown");
   assert.equal(nonMatches.length, 0);
 

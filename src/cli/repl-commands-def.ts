@@ -19,6 +19,12 @@ export const SLASH_COMMAND_DEFINITIONS: readonly SlashCommandDefinition[] = [
     needsArg: true,
   },
   {
+    name: "/foundation",
+    syntax: "/foundation <requirements>",
+    description: "Draft PRD, system design, and implementation plan",
+    needsArg: true,
+  },
+  {
     name: "/init",
     syntax: "/init",
     description: "Initialize .quorum/ configuration and persona templates",

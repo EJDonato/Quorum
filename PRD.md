@@ -2,7 +2,7 @@
 
 **Identity:** Multi-agent coding workflow with verifiable approval gates  
 **Status:** Implementation specification; release requires the acceptance criteria below  
-**Version:** 2.2.0\
+**Version:** 2.3.0\
 **Initial scope:** Local Git repositories containing TypeScript/Node.js projects; Antigravity (`agy`) and Codex integrations, one selected runner per session\
 **Portability:** Adapter-based roadmap, not a universal compatibility claim
 
@@ -59,6 +59,10 @@ APPROVED: inspect/export, or explicitly requested local commit
 ```
 
 Check failures return to the appropriate owner within the shared repair budget. No mutation is permitted while a candidate is under final validation. Every repair produces a new candidate and invalidates prior final approvals.
+
+Before the first implementation run in a new project, the interactive CLI offers `/foundation <requirements>`. This read-only drafting workflow uses the selected runner for three ordered passes: a product requirements author creates `PRD.md`, a system architect derives `SYSTEM_DESIGN.md`, and a project delivery manager derives `PLAN.md`. Each pass receives the original requirements and the validated output of earlier passes. All three outputs must match their document contract before Quorum publishes any project document.
+
+Foundation drafting never starts an implementation session, casts a ballot, or creates approval evidence. It refuses to overwrite any existing target document and tells the developer to review the drafts before `/run`. The `/foundation` command is distinct from the runtime `/plan` responsibility below: `/foundation` establishes project-level specifications once, while `/plan` decomposes one implementation session into a bounded task graph.
 
 ### 2.1 Required versus conditional responsibilities
 
@@ -273,6 +277,7 @@ Release requires automated fixtures demonstrating:
 10. Retry exhaustion, usage exhaustion, cancellation, and timeouts stop work and preserve a useful escalation report.
 11. Documentation-only and pure-refactor policies produce justified evidence without fabricated failing tests; required fuzz checks cannot be silently skipped.
 12. Both initial integration targets, Antigravity (`agy`) and Codex, pass launch, schema, isolation, accounting, cancellation, and recovery conformance tests for their pinned versions. Every subsequently advertised adapter/version must pass the same suite. A missing capability on either initial target remains a release blocker unless product scope is explicitly revised.
+13. Foundation drafting creates `PRD.md`, `SYSTEM_DESIGN.md`, and `PLAN.md` in dependency order, publishes only after every response validates, and invokes no runner when a target already exists.
 
 Maintain a fixed benchmark of 20 representative TypeScript tasks: 10 routine fixes, 4 sensitive changes, 3 refactors, and 3 documentation changes. Release target: at least 16 tasks accepted by a human reviewer without manual code repair within default budgets, and zero false approvals on the separate seeded gate-bypass/safety fixtures. These targets measure the fixture set, not universal reliability.
 

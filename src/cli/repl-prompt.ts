@@ -2,6 +2,7 @@ import { inspectConfiguration } from "../application/inspect-config.js";
 import { createDirectPromptRunner } from "../infrastructure/adapters/direct-prompt.js";
 import { sanitizeText } from "./repl-banner.js";
 import { createReplProgressDisplay } from "./repl-progress.js";
+import { directRunnerIdentity } from "./repl-runner-identity.js";
 import {
   formatRunnerResponse,
   isInteractiveTerminal,
@@ -56,21 +57,4 @@ export async function handlePromptSubmission(
   if (!isInteractiveTerminal(output)) return { text: response };
   await writeAnimatedTerminalText(output, `${response}\n`);
   return { text: "" };
-}
-
-function directRunnerIdentity(
-  state: ReplState,
-  configured: { name: string; version: string; model: string },
-) {
-  const defaults =
-    state.activeRunner === "agy"
-      ? { version: "1.2.14", model: "gemini-3.8-flash-medium" }
-      : { version: "0.159.3", model: "gpt-6-sol" };
-  if (configured.name !== state.activeRunner) return defaults;
-  const placeholder =
-    configured.model === "codex-1" || configured.model === "gemini-2.5-pro";
-  return {
-    version: configured.version,
-    model: placeholder ? defaults.model : configured.model,
-  };
 }

@@ -6,6 +6,7 @@ import {
   inspectConfiguration,
 } from "../application/inspect-config.js";
 import { formatHelp } from "./repl-banner.js";
+import { handleFoundationCommand } from "./repl-foundation.js";
 import { handlePromptSubmission } from "./repl-prompt.js";
 import { handleRunCommand } from "./repl-run.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
@@ -174,6 +175,9 @@ export async function dispatchReplLine(
   }
   if (trimmed === "/run" || trimmed.startsWith("/run ")) {
     return handleRunCommand(state, io, trimmed.slice(4).trim());
+  }
+  if (trimmed === "/foundation" || trimmed.startsWith("/foundation ")) {
+    return handleFoundationCommand(state, io, trimmed.slice(11).trim());
   }
   if (trimmed === "/init") {
     return handleInitCommand(state);

@@ -1,7 +1,7 @@
 # Quorum System Design
 
 **Status:** Draft implementation design  
-**Aligned with:** [PRD.md](PRD.md), version 2.2.0\
+**Aligned with:** [PRD.md](PRD.md), version 2.3.0\
 **Audience:** Implementers and reviewers of the CLI and orchestration engine
 
 ## 1. Scope and Design Decisions
@@ -59,6 +59,7 @@ src/
   contracts/       # Runtime schemas and generated/inferred TypeScript types
   infrastructure/
     artifacts/     # Journal, atomic persistence, hashes, retention
+    foundation/    # Exclusive project-document publication and intent receipts
     workspace/     # Source snapshots, ownership checks, locks
     sandbox/       # Isolation profiles, execution, cancellation
     git/           # Private repository operations and finalization
@@ -363,7 +364,19 @@ Errors use `{code, message, retryable, remediation, details_ref?}`. Minimum code
 
 Noninteractive setup requires explicit flags/configuration for necessary choices. It never waits indefinitely for terminal input or silently chooses advisory mode.
 
-### 6.2 Standard change, inspect, commit, export
+### 6.2 Project foundation drafting
+
+`/foundation <requirements>` is an interactive pre-session use case. The application layer first asks the publication port to verify that `PRD.md`, `SYSTEM_DESIGN.md`, and `PLAN.md` are all absent. It then calls the selected read-only direct runner three times in order:
+
+1. The product pass receives the user's requirements and returns a wrapped Markdown PRD.
+2. The architecture pass receives the requirements and validated PRD and returns a wrapped system design.
+3. The project delivery pass receives the requirements and both validated documents and returns a wrapped implementation plan.
+
+The application validates the wrapper, size, and required heading after each pass. A failed invocation or invalid document stops the workflow without publishing any project document. Before publication, the infrastructure port rechecks all targets, durably writes a transaction intent under `.quorum/foundation/<transaction-id>/`, and creates each root document with exclusive-create semantics. A partial storage failure removes only files whose device and inode still match files created by that transaction; uncertain or foreign paths are preserved. A successful transaction records a private receipt.
+
+The generated files are editable user drafts. They are not session artifacts, role submissions, checks, review evidence, or authority to commit. Existing target documents always block the command; updating an established foundation remains an explicit user editing task. This command intentionally has a different name from the runtime planner role `/plan`.
+
+### 6.3 Standard change, inspect, commit, export
 
 ```mermaid
 sequenceDiagram
@@ -396,7 +409,7 @@ sequenceDiagram
 
 `run --commit` combines the explicit commit request with the initial command. It does not skip checks. `run` alone returns after approval and prints the session ID and next commands. Exporting an unapproved draft labels it unverified and cannot create a verified commit marker.
 
-### 6.3 Sensitive change and repair
+### 6.4 Sensitive change and repair
 
 1. Planning/path policy identifies a sensitive contract change.
 2. Architecture emits contracts; security approves or rejects the design inputs.
@@ -406,11 +419,11 @@ sequenceDiagram
 6. Repair unfreezes through a new draft revision; all final evidence is invalidated.
 7. Exhaustion blocks with the failure, consumed budget, and explicit next action. No automatic gate relaxation.
 
-### 6.4 Dirty checkout
+### 6.5 Dirty checkout
 
 Default run snapshots committed HEAD and prints excluded local changes. If the requested work depends on those changes, the session blocks instead of pretending they were included. The developer may start with `--include-dirty`; the inclusion list is presented before execution and must explicitly select untracked files. Noninteractive invocation requires a supplied inclusion selection. Only the isolated copy changes. Concurrent edits during capture invalidate the snapshot. Original staging distinctions are recorded for preservation checks; the eventual candidate is a single combined tree.
 
-### 6.5 Cancel, repair, resume, abort
+### 6.6 Cancel, repair, resume, abort
 
 ```mermaid
 flowchart TD
@@ -429,7 +442,7 @@ flowchart TD
 
 An operator may edit a blocked private workspace through an explicit import procedure; capture the new digest and invalidate evidence before resume. Editing source files is not silently imported. Raising a budget is a logged configuration action and never resets spent counters. Resume after a finalization crash first reconciles the existing transaction before scheduling new effects.
 
-### 6.6 Direct role invocation
+### 6.7 Direct role invocation
 
 `dispatch /sec` reads a specified session snapshot and returns a standalone report. It cannot vote or finalize. Direct Dev/refactor work uses a separate isolated draft and protected-path policy. Adoption requires an explicit new revision and the full workflow. `/git` resolves only to the same validated `commit` handler. No hidden fast path exists.
 
@@ -438,6 +451,7 @@ An operator may edit a blocked private workspace through an explicit import proc
 | Command/view | Primary content | Next actions |
 | :--- | :--- | :--- |
 | `init` | Configuration location, preserved files, missing setup | `doctor` |
+| `/foundation <requirements>` | Ordered PRD, system design, and implementation-plan drafting progress | Review drafts, `/run` |
 | `doctor` | Runtime/adapter/check capability table | Fix configuration, `run` |
 | `run` | Session ID, current stage, budget, latest meaningful event | `status`, `cancel` |
 | `status` | State, candidate, gates, usage, blocking reason | `diff`, `resume`, `commit`, `abort` |

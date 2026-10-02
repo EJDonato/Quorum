@@ -31,6 +31,8 @@ export function formatHelp(isColor: boolean): string {
     `${bold}Available Slash Commands:${reset}`,
     `  ${yellow}/help${reset}                Show this command reference`,
     `  ${yellow}/run <prompt>${reset}        Execute council workflow session with active runner`,
+    `  ${yellow}/foundation <requirements>${reset}`,
+    "                       Draft PRD, system design, and implementation plan",
     `  ${yellow}/init${reset}                Initialize .quorum/ configuration and persona templates`,
     `  ${yellow}/runner [agy|codex]${reset}  Show or switch active runner`,
     `  ${yellow}/doctor${reset}              Check runtime capabilities and verifications`,
@@ -43,6 +45,7 @@ export function formatHelp(isColor: boolean): string {
     `${bold}Prompt Usage:${reset}`,
     "  Type natural language directly for a read-only runner response.",
     "  Direct responses are not approval evidence and cannot finalize changes.",
+    "  Use /foundation <requirements> once to create the project's planning documents.",
     "  Use /run <task> to start the Planner, QA, Developer, and Security workflow.",
   ].join("\n");
 }
