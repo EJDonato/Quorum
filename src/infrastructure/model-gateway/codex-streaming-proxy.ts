@@ -3,28 +3,35 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { randomUUID } from "node:crypto";
 import type { Socket } from "node:net";
 import { failure, type Outcome } from "../../contracts/errors.js";
-import { modelCountSchema } from "../../contracts/model-gateway.js";
-import { canonicalSerialize } from "../../domain/canonical.js";
+import {
+  modelCountSchema,
+  type ModelCapability,
+} from "../../contracts/model-gateway.js";
 import {
   admitCodexResponsesRequest,
   type CodexResponsesPayload,
 } from "./codex-request-firewall.js";
 import { pipeSse } from "./codex-streaming-sse.js";
-import type { ModelGatewayOptions } from "../../application/model-gateway.js";
+import {
+  fetchCodexUpstream,
+  readBoundedCodexJson,
+  validateCodexTransport,
+  type CodexTransportOptions,
+} from "./codex-upstream.js";
+import {
+  verifyGatewayCapability,
+  type ModelGatewayOptions,
+} from "../../application/model-gateway.js";
 import type { ModelLedgerTransaction } from "../../application/model-gateway-ports.js";
 
-export interface CodexStreamingProxyOptions {
+export interface CodexStreamingProxyOptions extends CodexTransportOptions {
   gateway: ModelGatewayOptions<CodexResponsesPayload>;
   model: string;
   outputTokensLimit: number;
   authorizedTools: readonly unknown[];
-  upstreamUrl: string;
-  upstreamCredential?(): Promise<Outcome<string>>;
-  maxRequestBodyBytes?: number;
-  timeoutMs?: number;
-  fetch?: typeof globalThis.fetch;
 }
 
 export interface CodexStreamingProxy {
@@ -37,6 +44,8 @@ export interface CodexStreamingProxy {
 export async function startCodexStreamingProxy(
   options: CodexStreamingProxyOptions,
 ): Promise<Outcome<CodexStreamingProxy>> {
+  const valid = validateCodexTransport(options);
+  if (!valid.ok) return valid;
   let handled = 0;
   const sockets = new Set<Socket>();
   const server = createServer((req, res) => {
@@ -84,7 +93,12 @@ async function handleProxyRequest(
     res.writeHead(req.method !== "POST" ? 405 : 404).end();
     return;
   }
-  const body = await readRequestBody(
+  const capability = await verifyGatewayCapability(options.gateway);
+  if (!capability.ok) {
+    res.writeHead(503).end();
+    return;
+  }
+  const body = await readBoundedCodexJson(
     req,
     options.maxRequestBodyBytes ?? 1048576,
   );
@@ -103,7 +117,14 @@ async function handleProxyRequest(
     res.end(JSON.stringify({ error: admitted.error }));
     return;
   }
-  const requestId = `req_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+  const requestId = `req_${randomUUID().replaceAll("-", "")}`;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const abortClosedClient = () => {
+    if (!res.writableEnded) controller.abort();
+  };
+  req.once("aborted", abort);
+  res.once("close", abortClosedClient);
   const dispatched = await options.gateway.ledger.exclusive((transaction) =>
     dispatchReservedStream({
       options,
@@ -111,33 +132,16 @@ async function handleProxyRequest(
       requestId,
       clientRes: res,
       transaction,
+      signal: controller.signal,
+      capability: capability.value,
     }),
   );
+  req.off("aborted", abort);
+  res.off("close", abortClosedClient);
   if (!dispatched.ok && !res.headersSent) {
     const status = dispatched.error.code === "BUDGET_EXHAUSTED" ? 429 : 502;
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: dispatched.error }));
-  }
-}
-
-async function readRequestBody(
-  req: IncomingMessage,
-  maxBytes: number,
-): Promise<Outcome<unknown>> {
-  const chunks: Buffer[] = [];
-  let bytes = 0;
-  for await (const chunk of req) {
-    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
-    bytes += buf.length;
-    if (bytes > maxBytes)
-      return failure("INVALID_INPUT", "Request body exceeds byte ceiling.");
-    chunks.push(buf);
-  }
-  try {
-    const data: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    return { ok: true, value: data };
-  } catch {
-    return failure("INVALID_INPUT", "Malformed JSON body in proxy request.");
   }
 }
 
@@ -147,21 +151,27 @@ async function dispatchReservedStream(params: {
   requestId: string;
   clientRes: ServerResponse;
   transaction: ModelLedgerTransaction;
+  signal: AbortSignal;
+  capability: Readonly<ModelCapability>;
 }): Promise<Outcome<void>> {
-  const { options, payload, requestId, transaction } = params;
+  const { options, payload, requestId, transaction, signal } = params;
   if (transaction.state.requests.has(requestId))
     return failure("STALE_INPUT", "Request ID was already reserved.");
   const auth = await options.gateway.authorize();
   if (!auth.ok) return auth;
-  const counted = await options.gateway.provider.countInput(
-    payload,
-    new AbortController().signal,
-  );
+  if (signal.aborted)
+    return failure("CANCELLED", "Codex request cancelled before counting.");
+  const counted = await options.gateway.provider.countInput(payload, signal);
   if (!counted.ok) return counted;
   const parsedCount = modelCountSchema.safeParse(counted.value);
   const payloadDigest = options.gateway.hash(payload);
-  const capDigest = options.gateway.hash(options.gateway.provider.capability);
-  if (!parsedCount.success || !payloadDigest.ok || !capDigest.ok)
+  const capDigest = options.gateway.hash(params.capability);
+  if (
+    !parsedCount.success ||
+    !payloadDigest.ok ||
+    !capDigest.ok ||
+    parsedCount.data.payload_digest !== payloadDigest.value
+  )
     return failure("EVIDENCE_INVALID", "Cannot bind input count to payload.");
   const reserved = await transaction.append({
     schema_version: "1.0.0",
@@ -179,6 +189,13 @@ async function dispatchReservedStream(params: {
     },
   });
   if (!reserved.ok) return reserved;
+  const reauthorized = await options.gateway.authorize();
+  if (!reauthorized.ok) return reauthorized;
+  if (signal.aborted)
+    return failure(
+      "CANCELLED",
+      "Codex request cancelled after reservation; ceiling remains charged.",
+    );
   return executeUpstreamStream({
     ...params,
     payloadDigest: payloadDigest.value,
@@ -192,43 +209,23 @@ async function executeUpstreamStream(params: {
   requestId: string;
   clientRes: ServerResponse;
   transaction: ModelLedgerTransaction;
+  signal: AbortSignal;
 }): Promise<Outcome<void>> {
-  const { options, payload, requestId, clientRes, transaction } = params;
-  const cred = options.upstreamCredential
-    ? await options.upstreamCredential()
-    : null;
-  if (cred && !cred.ok) return cred;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "text/event-stream",
-  };
-  if (cred) headers.Authorization = `Bearer ${cred.value}`;
-  const serialized = canonicalSerialize(payload);
-  if (!serialized.ok) return serialized;
-  const fetchFn = options.fetch ?? globalThis.fetch;
-  const base = options.upstreamUrl.replace(/\/+$/, "");
-  const target = base.endsWith("/responses") ? base : `${base}/responses`;
-  let upstream: Response;
-  try {
-    upstream = await fetchFn(target, {
-      method: "POST",
-      headers,
-      body: serialized.value,
-      signal: AbortSignal.timeout(options.timeoutMs ?? 30000),
-      redirect: "error",
-    });
-  } catch {
-    return failure("CAPABILITY_MISSING", "Upstream transport failed.");
-  }
-  if (!upstream.ok || !upstream.body)
-    return failure("CAPABILITY_MISSING", "Upstream rejected request.");
+  const { options, payload, requestId, clientRes, transaction, signal } =
+    params;
+  const fetched = await fetchCodexUpstream(options, payload, signal);
+  if (!fetched.ok) return fetched;
+  const upstream = fetched.value;
   clientRes.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
   });
   try {
-    const usage = await pipeSse(upstream.body, clientRes);
+    const usage = await pipeSse(upstream.body, clientRes, {
+      maxBytes: options.maxResponseBytes ?? 1_048_576,
+      signal,
+    });
     if (!usage.ok) return usage;
     return await transaction.append({
       schema_version: "1.0.0",

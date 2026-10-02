@@ -1,19 +1,19 @@
 {
   "executable": "/Users/eltonjames/.codex/packages/standalone/releases/0.159.3-aarch64-apple-darwin/bin/codex",
   "executable_digest": "sha256:4d210f7c5a18fd0386434df23b5bdbb8c0e7257d3e8a2b30b0769c8bbe99a878",
-  "config_digest": "sha256:5ae08328a2146ee359c76ff32246ac83eb045923f2aeae066a7bc63dde056059",
-  "sandbox_digest": "sha256:432fb37b2925b36c6e36f3949920419461c2945f9ba48ef3f073c00df64729b3",
+  "config_digest": "sha256:2c21d21af8d5c1bc31018865ec3ead4f3bf48db70944e40a50b5702c06849e54",
+  "sandbox_digest": "sha256:bbe618042810aad71f8115c02f7969ae4e78461b58917b541958e743204a9464",
   "env": {
-    "HOME": "/private/tmp/quorum-codex-offline-y071aZ/home",
-    "CODEX_HOME": "/private/tmp/quorum-codex-offline-y071aZ/home",
-    "TMPDIR": "/private/tmp/quorum-codex-offline-y071aZ/home",
+    "HOME": "/private/tmp/quorum-codex-offline-Y2SzHT/home",
+    "CODEX_HOME": "/private/tmp/quorum-codex-offline-Y2SzHT/home",
+    "TMPDIR": "/private/tmp/quorum-codex-offline-Y2SzHT/home",
     "PATH": "/usr/bin:/bin",
     "LANG": "en_US.UTF-8",
     "NO_COLOR": "1"
   },
-  "cwd": "/private/tmp/quorum-codex-offline-y071aZ/work",
+  "cwd": "/private/tmp/quorum-codex-offline-Y2SzHT/work",
   "wrapper": "/usr/bin/sandbox-exec",
-  "profile": "/private/tmp/quorum-codex-offline-y071aZ/sandbox.sb",
+  "profile": "/private/tmp/quorum-codex-offline-Y2SzHT/sandbox.sb",
   "commands": [
     [
       "--version"
@@ -23,12 +23,12 @@
       "generate-json-schema",
       "--experimental",
       "--out",
-      "/private/tmp/quorum-codex-offline-y071aZ/schemas"
+      "/private/tmp/quorum-codex-offline-Y2SzHT/schemas"
     ],
     [
       "app-server"
     ]
   ],
   "external_model_attempts": 0,
-  "fake_provider_port": 59331
+  "fake_provider_port": 62969
 }

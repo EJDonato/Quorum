@@ -1,6 +1,6 @@
 # Antigravity Enforced Bridge Implementation
 
-**Status:** Tool-gate lifecycle interception and loopback proxy with ledger reservation/accounting implemented. Offline unit and integration tests passing.
+**Status:** Tool-gate and fixture reservation components implemented. Real upstream forwarding, real-runner hook execution and complete provider accounting remain blocked.
 
 ---
 
@@ -35,9 +35,9 @@ The Antigravity Enforced Bridge introduces two dedicated components placed under
   1. Counts input tokens using `gateway.provider.countInput`.
   2. Binds payload digest and capability digest.
   3. Appends an atomic `reserved` event to [`ModelLedgerPort`](../../src/application/model-gateway-ports.ts). If the session budget is exhausted, rejects immediately with HTTP 429 (`BUDGET_EXHAUSTED`).
-- **Complete Transport Accounting:**
-  - Extracts exact token usage (prompt tokens, candidate tokens, cached tokens, and reasoning tokens).
-  - Settles the ledger transaction via atomic append of a `settled` event with complete accounting confirmation.
+- **Fixture Accounting Only:**
+  - The current implementation returns a synthetic response and records a fixed ten output tokens.
+  - `upstreamUrl` and `upstreamCredential` are not used for provider forwarding. This cannot establish credential isolation, a provider ceiling or complete accounting.
 - **Clean Shutdown:** Tracks open sockets and closes connections cleanly upon test or session termination.
 
 ---
@@ -62,10 +62,10 @@ The Antigravity Enforced Bridge introduces two dedicated components placed under
 
 ## 4. Capability Matrix Update
 
-| Capability                     | Status                | Implementation Mechanism                                                                                        |
-| :----------------------------- | :-------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| **1. Broker-Only Tools**       | **PROVEN (Offline)**  | `.agents/hooks.json` `PreToolUse` hook denies all 57 native tools; allows only broker tools.                    |
-| **2. Credential Isolation**    | **PROVEN (Offline)**  | Loopback proxy intercepts `CLOUD_CODE_URL`; runner receives no upstream cloud credentials.                      |
-| **3. Hard Token Ceilings**     | **PROVEN (Offline)**  | Pre-request reservation on `ModelLedgerPort` drops requests exceeding allocation before generation.             |
-| **4. Complete Accounting**     | **PROVEN (Offline)**  | Transport-level response inspection records exact prompt, completion, and reasoning tokens into durable ledger. |
-| **5. Descendant Cancellation** | **PENDING CONTAINER** | Requires Docker container cgroup execution to isolate from macOS host process groups.                           |
+| Capability                     | Status         | Implementation Mechanism                                                                                      |
+| :----------------------------- | :------------- | :------------------------------------------------------------------------------------------------------------ |
+| **1. Broker-Only Tools**       | **PARTIAL**    | Standalone hook gate denies native names; actual `agy` lifecycle invocation still needs conformance evidence. |
+| **2. Credential Isolation**    | **UNVERIFIED** | Proposed loopback route exists, but real upstream forwarding and runner environment evidence are absent.      |
+| **3. Hard Token Ceilings**     | **PARTIAL**    | Fixture reservation rejects exhausted allocations; actual forwarded requests are not implemented.             |
+| **4. Complete Accounting**     | **BLOCKED**    | Current response and ten-token settlement are synthetic.                                                      |
+| **5. Descendant Cancellation** | **PARTIAL**    | Generic cgroup cancellation passed; the pinned runner was not exercised in that container.                    |

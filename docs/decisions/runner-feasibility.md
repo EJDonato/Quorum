@@ -1,6 +1,6 @@
 # Initial runner feasibility investigation
 
-Status: All five mandatory enforced capabilities proven offline and empirically verified for both Codex 0.159.3 and Antigravity 1.2.14. **M0 is UNBLOCKED**. Full release `test:conformance` remains pending final containerized runner wiring.
+Status: Candidate enforcement components exist for Codex 0.159.3 and Antigravity 1.2.14, but the final containerized runner path and conformance command do not. **M0 remains BLOCKED.** Offline component tests and a generic container cancellation probe cannot replace version-bound end-to-end runner evidence.
 
 On 2026-10-01 local executable discovery found:
 
@@ -97,14 +97,14 @@ The container descendant cancellation probe (`npm run probe:container:cancellati
 
 ## M0 Exit Gate Assessment
 
-All five mandatory capabilities required by PRD Section 7 and [enforced-runner-capabilities.md](../implementation/enforced-runner-capabilities.md) now have verified empirical implementations and offline test coverage:
+The implemented components are useful prerequisites, but no retained test starts either pinned runner inside the final container, routes its real protocol through the corresponding proxy and broker, exercises a denied effect, interrupts it, and emits a complete capability receipt. `test:conformance` is still unavailable and `doctor` deliberately reports unverified capabilities.
 
-| Capability                     | Codex 0.159.3 Status                                                           | Antigravity 1.2.14 Status                                                    |
-| :----------------------------- | :----------------------------------------------------------------------------- | :--------------------------------------------------------------------------- |
-| **1. Broker-only tools**       | **PROVEN:** `config.toml` strips built-ins; only broker dynamic tools emitted. | **PROVEN:** `PreToolUse` hook denies native tools; allows broker tools.      |
-| **2. Credential isolation**    | **PROVEN:** Keyless app-server + loopback streaming proxy.                     | **PROVEN:** `CLOUD_CODE_URL` loopback proxy; runner receives no credentials. |
-| **3. Hard token ceilings**     | **PROVEN:** Pre-request ledger reservation via `CodexStreamingProxy`.          | **PROVEN:** Pre-request ledger reservation via `AgyStreamingProxy`.          |
-| **4. Complete accounting**     | **PROVEN:** Transport SSE pipe settlement to durable ledger.                   | **PROVEN:** Transport response extraction to durable ledger.                 |
-| **5. Descendant cancellation** | **PROVEN:** Linux container cgroup termination verified via probe.             | **PROVEN:** Linux container cgroup termination verified via probe.           |
+| Capability                     | Codex 0.159.3 Status                                                                                  | Antigravity 1.2.14 Status                                                                                |
+| :----------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| **1. Broker-only tools**       | **PARTIAL:** retained fake-provider request contains only `repo.read`; final container path untested. | **PARTIAL:** standalone hook gate denies native names; real `agy` hook invocation is untested.           |
+| **2. Credential isolation**    | **PARTIAL:** loopback design exists; final runner environment and egress route are untested.          | **PARTIAL:** `CLOUD_CODE_URL` design exists; current proxy has no real upstream forwarding path.         |
+| **3. Hard token ceilings**     | **PARTIAL:** proxy reserves before fixture upstream and now rejects mismatched counts.                | **PARTIAL:** fixture reservation exists; actual provider request forwarding and enforcement are absent.  |
+| **4. Complete accounting**     | **PARTIAL:** bounded SSE fixture settlement exists; provider/iteration conformance is untested.       | **BLOCKED:** the bridge fabricates a fixed ten-token settlement instead of parsing an upstream response. |
+| **5. Descendant cancellation** | **PARTIAL:** generic Docker cgroup removal passed; pinned Codex was not the contained process.        | **PARTIAL:** generic Docker cgroup removal passed; pinned `agy` was not the contained process.           |
 
-**Milestone M0 is UNBLOCKED.** Both runners are proven capable of satisfying Quorum's host-enforced invariants under container containment.
+**Milestone M0 remains BLOCKED.** It can move only after the real version-pinned conformance path passes independently for both runners and `doctor` consumes those retained receipts.

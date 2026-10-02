@@ -57,7 +57,12 @@ function validCodexRequest(tools: unknown[] = [repoTool], model = "gpt-6-sol") {
 
 async function setupHarness(
   t: TestContext,
-  options: { budget?: number; maxRequestBodyBytes?: number } = {},
+  options: {
+    budget?: number;
+    maxRequestBodyBytes?: number;
+    countDigestMismatch?: boolean;
+    revokeAfterCount?: boolean;
+  } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), "codex-proxy-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -116,6 +121,7 @@ async function setupHarness(
     },
   });
   assert.ok(ledger.ok);
+  let authorizations = 0;
 
   const gateway: ModelGatewayOptions<CodexResponsesPayload> = {
     provider: {
@@ -137,7 +143,9 @@ async function setupHarness(
         return Promise.resolve({
           ok: true,
           value: {
-            payload_digest: digest.value,
+            payload_digest: options.countDigestMismatch
+              ? "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+              : digest.value,
             input_tokens: Buffer.byteLength(text.value),
           },
         });
@@ -150,7 +158,14 @@ async function setupHarness(
     instructions: "Host instructions",
     outputTokensLimit: 32,
     hash: canonicalDigest,
-    authorize: () => Promise.resolve({ ok: true as const, value: undefined }),
+    authorize: () => {
+      authorizations++;
+      return Promise.resolve(
+        options.revokeAfterCount && authorizations > 1
+          ? failure("STALE_INPUT", "Fixture authorization revoked.")
+          : { ok: true as const, value: undefined },
+      );
+    },
     verifyCapability: () =>
       Promise.resolve({ ok: true as const, value: undefined }),
   };
@@ -307,4 +322,22 @@ void test("preserves durable reservation and does not settle when upstream strea
   const first = events[0];
   assert.ok(first);
   assert.equal(first.kind, "reserved");
+});
+
+void test("substituted counts and revoked authorization stop before upstream", async (t) => {
+  for (const options of [
+    { countDigestMismatch: true },
+    { revokeAfterCount: true },
+  ]) {
+    const h = await setupHarness(t, options);
+    const response = await fetch(`${h.proxy.url}/responses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validCodexRequest()),
+    });
+    assert.equal(response.status, 502);
+    assert.equal(h.upstreamRequests(), 0);
+    const events = await readLedgerEvents(h.root);
+    assert.equal(events.length, options.revokeAfterCount ? 1 : 0);
+  }
 });

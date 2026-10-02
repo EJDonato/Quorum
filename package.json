@@ -11,7 +11,8 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -8,9 +8,12 @@ multi_agent = false
 goals = false
 hooks = false
 plugins = false
+view_image = false
+[tools.experimental_request_user_input]
+enabled = false
 [model_providers.quorum_fixture]
 name = "Offline fixture"
-base_url = "http://127.0.0.1:59331/v1"
+base_url = "http://127.0.0.1:62969/v1"
 wire_api = "responses"
 requires_openai_auth = false
 request_max_retries = 0

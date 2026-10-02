@@ -40,7 +40,7 @@ export async function dispatchModelRequest(options: {
   const { gateway, signal } = options;
   if (signal.aborted)
     return failure("CANCELLED", "Model request cancelled before dispatch.");
-  const capability = await verifyModelCapability(gateway);
+  const capability = await verifyGatewayCapability(gateway);
   if (!capability.ok) return capability;
   const input = modelInputSchema.safeParse(options.input);
   const outputLimit = positiveCount.safeParse(gateway.outputTokensLimit);
@@ -103,7 +103,7 @@ export async function dispatchPreparedModelRequest<TPayload>(options: {
       return failure("CAPABILITY_MISSING", "Provider capability is invalid.");
     capability = parsed.data;
   } else {
-    const verified = await verifyModelCapability(options.gateway);
+    const verified = await verifyGatewayCapability(options.gateway);
     if (!verified.ok) return verified;
     capability = verified.value;
   }
@@ -134,7 +134,7 @@ export async function dispatchPreparedModelRequest<TPayload>(options: {
   );
 }
 
-async function verifyModelCapability<TPayload>(
+export async function verifyGatewayCapability<TPayload>(
   gateway: ModelGatewayOptions<TPayload>,
 ): Promise<Outcome<ModelCapability>> {
   const capability = modelCapabilitySchema.safeParse(
