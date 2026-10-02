@@ -1,6 +1,11 @@
 import { inspectConfiguration } from "../application/inspect-config.js";
 import { createDirectPromptRunner } from "../infrastructure/adapters/direct-prompt.js";
 import { sanitizeText } from "./repl-banner.js";
+import { createReplProgressDisplay } from "./repl-progress.js";
+import {
+  formatRunnerResponse,
+  supportsTerminalStyle,
+} from "./terminal-style.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
 export async function handlePromptSubmission(
@@ -16,6 +21,11 @@ export async function handlePromptSubmission(
     return { text: `Direct prompt blocked: ${config.error.message}` };
   const identity = directRunnerIdentity(state, config.value.adapter);
   const invoke = io.directPrompt ?? createDirectPromptRunner();
+  const output = io.stdout ?? process.stdout;
+  const progress = createReplProgressDisplay({
+    output,
+    runner: state.activeRunner,
+  });
   const result = await invoke(
     {
       runner: state.activeRunner,
@@ -27,13 +37,8 @@ export async function handlePromptSubmission(
       timeoutMs: Math.min(config.value.budgets.invocation_timeout_ms, 120_000),
     },
     undefined,
-    (progress) => {
-      const output = io.stdout ?? process.stdout;
-      output.write(
-        `[${state.activeRunner}] ${sanitizeText(progress.message)}\n`,
-      );
-    },
-  );
+    progress.report,
+  ).finally(progress.stop);
   if (!result.ok)
     return {
       text: sanitizeText(
@@ -41,12 +46,12 @@ export async function handlePromptSubmission(
       ),
     };
   return {
-    text: [
-      `${result.value.runner} response (${result.value.model}, read-only direct mode):`,
-      sanitizeText(result.value.text),
-      "",
-      "This response is not Quorum approval evidence. Use /run <task> for the council workflow.",
-    ].join("\n"),
+    text: formatRunnerResponse({
+      runner: result.value.runner,
+      model: result.value.model,
+      text: result.value.text,
+      color: supportsTerminalStyle(output),
+    }),
   };
 }
 

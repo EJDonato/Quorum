@@ -29,7 +29,9 @@ runner in read-only direct mode and prints the runner's response. Use
 `/runner agy` or `/runner codex` to switch runners. Direct responses are not
 Quorum approval evidence. While a prompt runs, the terminal prints bounded
 progress messages and safe summaries of Codex read-only activity; Antigravity
-shows lifecycle messages and elapsed-time heartbeats. `/run <task>` is reserved
+shows lifecycle messages and elapsed-time heartbeats. Interactive terminals also
+render an animated activity line and color headings, emphasis, code, paths, and
+links in runner responses. Piped output remains plain. `/run <task>` is reserved
 for the enforced council workflow and fails closed while its production runner
 transport is incomplete.
 
