@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "agy_offline_conformance",
+  "expected_version": "1.2.14",
+  "model": "gemini-3.8-flash-medium",
+  "external_model_attempts": 0,
+  "local_request_limit": 4,
+  "timeout_ms": 30000,
+  "enforced_conformance": false
+}

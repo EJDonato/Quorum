@@ -23,16 +23,16 @@ async function setupHarness(
   const root = await mkdtemp(join(tmpdir(), "agy-upstream-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const seen: {
-    authorization: string | undefined;
+    apiKey: string | undefined;
     route: string | undefined;
     body: string | undefined;
-  } = { authorization: undefined, route: undefined, body: undefined };
+  } = { apiKey: undefined, route: undefined, body: undefined };
   const upstream = createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
       const body = Buffer.concat(chunks).toString("utf8");
-      seen.authorization = request.headers.authorization;
+      seen.apiKey = request.headers["x-goog-api-key"] as string | undefined;
       seen.route = request.url;
       seen.body = body;
       const inputTokens = Buffer.byteLength(body);
@@ -82,7 +82,7 @@ async function setupHarness(
     provider: {
       capability: Object.freeze({
         schema_version: "1.0.0" as const,
-        provider: "cloud-code-http-v1",
+        provider: "gemini-http-v1",
         model: "gemini-fixture",
         status: "fixture" as const,
         input_bound: "exact_payload" as const,
@@ -117,7 +117,8 @@ async function setupHarness(
   const proxy = await startAgyStreamingProxy({
     kind: "upstream",
     gateway,
-    model: "gemini-fixture",
+    allowedModels: ["gemini-fixture"],
+    sentinelCredential: "QUORUM_PROXY_SENTINEL",
     outputTokensLimit: 32,
     upstreamUrl: `http://127.0.0.1:${address.port}`,
     upstreamCredential: () =>
@@ -141,24 +142,35 @@ async function readEvents(root: string): Promise<GatewayEvent[]> {
 void test("agy upstream forwards canonical payload and settles actual usage", async (t) => {
   const harness = await setupHarness(t);
   const payload = {
-    model: "gemini-fixture",
     contents: [{ parts: [{ text: "ping" }] }],
+    generationConfig: { temperature: 0 },
+    systemInstruction: { parts: [{ text: "fixture" }] },
+  };
+  const expectedPayload = {
+    ...payload,
+    generationConfig: { temperature: 0, maxOutputTokens: 32 },
   };
   const response = await fetch(
-    `${harness.proxy.url}/v1internal:generateContent`,
+    `${harness.proxy.url}/v1beta/models/gemini-fixture:streamGenerateContent?alt=sse`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": "QUORUM_PROXY_SENTINEL",
+      },
       body: JSON.stringify(payload),
     },
   );
   assert.equal(response.status, 200);
   assert.match(await response.text(), /UPSTREAM_OK/u);
-  const canonical = canonicalSerialize(payload);
+  const canonical = canonicalSerialize(expectedPayload);
   assert.ok(canonical.ok);
   assert.equal(harness.seen.body, canonical.value);
-  assert.equal(harness.seen.route, "/v1internal:generateContent");
-  assert.equal(harness.seen.authorization, "Bearer AGY_FIXTURE_KEY");
+  assert.equal(
+    harness.seen.route,
+    "/v1beta/models/gemini-fixture:streamGenerateContent?alt=sse",
+  );
+  assert.equal(harness.seen.apiKey, "AGY_FIXTURE_KEY");
   const events = await readEvents(harness.root);
   assert.equal(events.length, 2);
   const settled = events[1];
@@ -171,11 +183,18 @@ void test("agy upstream forwards canonical payload and settles actual usage", as
 void test("agy upstream keeps reservation when usage is incomplete", async (t) => {
   const harness = await setupHarness(t, { omitUsage: true });
   const response = await fetch(
-    `${harness.proxy.url}/v1internal:generateContent`,
+    `${harness.proxy.url}/v1beta/models/gemini-fixture:streamGenerateContent?alt=sse`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [] }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": "QUORUM_PROXY_SENTINEL",
+      },
+      body: JSON.stringify({
+        contents: [{}],
+        generationConfig: {},
+        systemInstruction: {},
+      }),
     },
   );
   assert.equal(response.status, 502);

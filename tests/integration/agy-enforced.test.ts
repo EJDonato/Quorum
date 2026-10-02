@@ -16,6 +16,28 @@ import type { ModelGatewayOptions } from "../../src/application/model-gateway.js
 import { request as makeInvocation } from "../fixtures/evidence.js";
 import { failure } from "../../src/contracts/errors.js";
 
+const modelRoute =
+  "/v1beta/models/gemini-fixture:streamGenerateContent?alt=sse";
+
+function agyPayload(contents: unknown[]) {
+  return {
+    contents,
+    generationConfig: { temperature: 0 },
+    systemInstruction: { parts: [{ text: "fixture" }] },
+  };
+}
+
+function postAgy(proxy: AgyStreamingProxy, body: unknown) {
+  return fetch(proxy.url + modelRoute, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": "QUORUM_PROXY_SENTINEL",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 async function setupAgyProxyHarness(
   t: TestContext,
   options: {
@@ -98,7 +120,8 @@ async function setupAgyProxyHarness(
 
   const started = await startAgyStreamingProxy({
     gateway,
-    model: "gemini-3.8-flash-medium",
+    allowedModels: ["gemini-fixture"],
+    sentinelCredential: "QUORUM_PROXY_SENTINEL",
     outputTokensLimit: 32,
     kind: "fixture",
     fixtureResponse: (payload) => {
@@ -189,43 +212,18 @@ await test("tool gate hooks installation produces valid configuration file", asy
   }
 });
 
-await test("agy proxy handles handshake and generates with durable ledger accounting", async (t) => {
+await test("agy proxy generates with durable ledger accounting", async (t) => {
   const { proxy, root } = await setupAgyProxyHarness(t, { budget: 5000 });
-
-  // 1. Handshake: loadCodeAssist
-  const loadRes = await fetch(`${proxy.url}/v1internal:loadCodeAssist`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-  assert.equal(loadRes.status, 200);
-  const loadJson = (await loadRes.json()) as { userTier: { userTier: string } };
-  assert.equal(loadJson.userTier.userTier, "PAID");
-
-  // 2. Handshake: fetchAvailableModels
-  const modelRes = await fetch(`${proxy.url}/v1internal:fetchAvailableModels`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-  assert.equal(modelRes.status, 200);
-
-  // 3. Generate content with budget
-  const genRes = await fetch(`${proxy.url}/v1internal:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gemini-3.8-flash-medium",
-      contents: [{ role: "user", parts: [{ text: "ping" }] }],
-    }),
-  });
+  const genRes = await postAgy(
+    proxy,
+    agyPayload([{ role: "user", parts: [{ text: "ping" }] }]),
+  );
   assert.equal(genRes.status, 200);
   const genJson = (await genRes.json()) as {
     usageMetadata: { totalTokenCount: number };
   };
   assert.ok(genJson.usageMetadata.totalTokenCount > 0);
 
-  // 4. Verify durable ledger files have reservation and settlement
   const eventsDir = join(root, "events");
   const files = (await readdir(eventsDir))
     .filter((f) => f.endsWith(".json"))
@@ -248,22 +246,15 @@ await test("agy proxy handles handshake and generates with durable ledger accoun
 await test("agy proxy enforces hard token ceiling and rejects when budget exhausted", async (t) => {
   const { proxy } = await setupAgyProxyHarness(t, { budget: 10 });
 
-  // Request requires more tokens than the allocation allows
-  const genRes = await fetch(`${proxy.url}/v1internal:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gemini-3.8-flash-medium",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: "A very long prompt that exceeds ten tokens easily." },
-          ],
-        },
-      ],
-    }),
-  });
+  const genRes = await postAgy(
+    proxy,
+    agyPayload([
+      {
+        role: "user",
+        parts: [{ text: "A very long prompt that exceeds ten tokens easily." }],
+      },
+    ]),
+  );
   assert.equal(genRes.status, 429);
   const errJson = (await genRes.json()) as { error: { code: string } };
   assert.equal(errJson.error.code, "BUDGET_EXHAUSTED");
@@ -273,12 +264,35 @@ await test("agy proxy rejects a count for another payload before reservation", a
   const { proxy, root } = await setupAgyProxyHarness(t, {
     countDigestMismatch: true,
   });
-  const response = await fetch(`${proxy.url}/v1internal:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [] }),
-  });
+  const response = await postAgy(proxy, agyPayload([{}]));
   assert.equal(response.status, 502);
+  assert.deepEqual(await readdir(join(root, "events")), []);
+});
+
+await test("agy proxy rejects runner credentials and models outside its exact contract", async (t) => {
+  const { proxy, root } = await setupAgyProxyHarness(t);
+  const wrongCredential = await fetch(proxy.url + modelRoute, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": "NOT_THE_SENTINEL",
+    },
+    body: JSON.stringify(agyPayload([{}])),
+  });
+  assert.equal(wrongCredential.status, 401);
+  const wrongModel = await fetch(
+    proxy.url +
+      "/v1beta/models/gemini-unapproved:streamGenerateContent?alt=sse",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": "QUORUM_PROXY_SENTINEL",
+      },
+      body: JSON.stringify(agyPayload([{}])),
+    },
+  );
+  assert.equal(wrongModel.status, 404);
   assert.deepEqual(await readdir(join(root, "events")), []);
 });
 
@@ -286,11 +300,7 @@ await test("agy proxy reauthorizes after durable reservation", async (t) => {
   const { proxy, root } = await setupAgyProxyHarness(t, {
     revokeAfterCount: true,
   });
-  const response = await fetch(`${proxy.url}/v1internal:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [] }),
-  });
+  const response = await postAgy(proxy, agyPayload([{}]));
   assert.equal(response.status, 502);
   const events = await readdir(join(root, "events"));
   assert.equal(events.length, 1);

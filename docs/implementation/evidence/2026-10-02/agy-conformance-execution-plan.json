@@ -1,0 +1,15 @@
+{
+  "executable": "/Users/eltonjames/.local/bin/agy",
+  "executable_digest": "sha256:a33fdf084ecd199df00694f35a243200a3efacb1f4f3adf04ca19d76f7f714c4",
+  "config_digest": "sha256:be0b72d37aa1f5bbde7248e634acaac49a9a27e405394a69ad12eb11cf766739",
+  "hooks_digest": "sha256:e75edefdf7a53eb6485901d18bf570a286e2e27422fb6fe71bb053f8e30447d0",
+  "sandbox_digest": "sha256:2ac590c71dd1fed04047eb36a66959d00369e8922a69c275ce34b2d6e35dd166",
+  "cwd": "/private/tmp/quorum-agy-conformance-6HC45y/work",
+  "model": "gemini-3.8-flash-medium",
+  "network": [
+    "127.0.0.1:64009",
+    "127.0.0.1:64008/hook"
+  ],
+  "credential_mode": "non_secret_runner_sentinel_replaced_by_proxy",
+  "external_model_attempts": 0
+}

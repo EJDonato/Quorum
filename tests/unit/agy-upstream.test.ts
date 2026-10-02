@@ -14,7 +14,8 @@ const transport = (upstreamUrl: string) => ({
 
 void test("agy upstream transport permits only explicit official or loopback bases", () => {
   assert.ok(
-    validateAgyUpstream(transport("https://cloudcode-pa.googleapis.com")).ok,
+    validateAgyUpstream(transport("https://generativelanguage.googleapis.com"))
+      .ok,
   );
   assert.ok(validateAgyUpstream(transport("http://127.0.0.1:1234")).ok);
   assert.equal(validateAgyUpstream(transport("https://example.com")).ok, false);
@@ -23,8 +24,9 @@ void test("agy upstream transport permits only explicit official or loopback bas
     false,
   );
   assert.equal(
-    validateAgyUpstream(transport("https://cloudcode-pa.googleapis.com/evil"))
-      .ok,
+    validateAgyUpstream(
+      transport("https://generativelanguage.googleapis.com/evil"),
+    ).ok,
     false,
   );
 });

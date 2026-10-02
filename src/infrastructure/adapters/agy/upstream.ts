@@ -39,7 +39,7 @@ export function validateAgyUpstream(
     url.protocol === "http:" && url.hostname === "127.0.0.1" && !!url.port;
   const official =
     url.protocol === "https:" &&
-    url.origin === "https://cloudcode-pa.googleapis.com";
+    url.origin === "https://generativelanguage.googleapis.com";
   if (
     (!loopback && !official) ||
     url.username ||
@@ -76,7 +76,7 @@ export async function fetchAgyUpstream(options: {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${credential.value}`,
+          "x-goog-api-key": credential.value,
           "Content-Type": "application/json",
           Accept: "application/json, text/event-stream",
         },

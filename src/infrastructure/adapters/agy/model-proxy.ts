@@ -12,6 +12,7 @@ import {
 } from "../../../contracts/model-gateway.js";
 import { verifyGatewayCapability } from "../../../application/model-gateway.js";
 import type { ModelLedgerTransaction } from "../../../application/model-gateway-ports.js";
+import { serializeModelLedger } from "../../model-gateway/serialized-ledger.js";
 import {
   fetchAgyUpstream,
   parseAgyUsage,
@@ -19,15 +20,16 @@ import {
   type AgyUpstreamResponse,
 } from "./upstream.js";
 import {
-  agyAvailableModels,
-  agyHandshake,
+  admitAgyPayload,
   parseAgyRoute,
   readAgyRequestBody,
   respondAgyError,
-  respondAgyJson,
 } from "./protocol.js";
 import { appendAgySettlement } from "./ledger-events.js";
-import type { AgyStreamingProxyOptions } from "./options.js";
+import {
+  validAgyProxyIdentity,
+  type AgyStreamingProxyOptions,
+} from "./options.js";
 
 export type { AgyStreamingProxyOptions } from "./options.js";
 
@@ -45,21 +47,20 @@ export async function startAgyStreamingProxy(
   if (
     !Number.isSafeInteger(requestLimit) ||
     requestLimit < 1 ||
-    requestLimit > 1_048_576
+    requestLimit > 1_048_576 ||
+    !validAgyProxyIdentity(options)
   )
-    return failure(
-      "INVALID_INPUT",
-      "Invalid Antigravity request byte ceiling.",
-    );
+    return failure("INVALID_INPUT", "Invalid Antigravity proxy options.");
   if (options.kind === "upstream") {
     const valid = validateAgyUpstream(options);
     if (!valid.ok) return valid;
   }
+  const runtimeOptions = serializedOptions(options);
   let handled = 0;
   const sockets = new Set<Socket>();
   const server = createServer((req, res) => {
     handled++;
-    void handleAgyRequest(req, res, options).catch(() =>
+    void handleAgyRequest(req, res, runtimeOptions).catch(() =>
       respondAgyError(res, 500),
     );
   });
@@ -92,22 +93,26 @@ export async function startAgyStreamingProxy(
   };
 }
 
+function serializedOptions(
+  options: AgyStreamingProxyOptions,
+): AgyStreamingProxyOptions {
+  return {
+    ...options,
+    gateway: {
+      ...options.gateway,
+      ledger: serializeModelLedger(options.gateway.ledger, 4),
+    },
+  };
+}
+
 async function handleAgyRequest(
   req: IncomingMessage,
   res: ServerResponse,
   options: AgyStreamingProxyOptions,
 ): Promise<void> {
   if (req.method !== "POST") return respondAgyError(res, 405);
-  const route = parseAgyRoute(req.url ?? "");
+  const route = parseAgyRoute(req.url ?? "", options.allowedModels);
   if (!route.ok) return respondAgyError(res, 404);
-  if (route.value === "/v1internal:loadCodeAssist") {
-    respondAgyJson(res, agyHandshake(options.model));
-    return;
-  }
-  if (route.value === "/v1internal:fetchAvailableModels") {
-    respondAgyJson(res, agyAvailableModels(options.model));
-    return;
-  }
   await handleGenerateContent({ req, res, options, route: route.value });
 }
 
@@ -125,6 +130,10 @@ async function handleGenerateContent(params: {
     options.maxRequestBodyBytes ?? 1_048_576,
   );
   if (!body.ok) return respondAgyError(res, 400, body.error);
+  if (req.headers["x-goog-api-key"] !== options.sentinelCredential)
+    return respondAgyError(res, 401);
+  const admitted = admitAgyPayload(body.value, options.outputTokensLimit);
+  if (!admitted.ok) return respondAgyError(res, 400, admitted.error);
   const controller = new AbortController();
   const abort = () => controller.abort();
   req.once("aborted", abort);
@@ -132,7 +141,7 @@ async function handleGenerateContent(params: {
   const dispatched = await options.gateway.ledger.exclusive((transaction) =>
     dispatchReserved({
       options,
-      payload: body.value,
+      payload: admitted.value,
       route,
       requestId: `req_agy_${randomUUID().replaceAll("-", "")}`,
       transaction,

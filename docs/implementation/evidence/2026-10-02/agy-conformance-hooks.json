@@ -1,0 +1,1 @@
+{"quorum-broker-gate":{"PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"/usr/bin/curl --silent --show-error --fail-with-body --max-time 5 --header 'Content-Type: application/json' --data-binary @- http://127.0.0.1:64008/hook","timeout":5}]}]}}

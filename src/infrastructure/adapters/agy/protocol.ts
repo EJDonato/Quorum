@@ -1,5 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { failure, type Outcome } from "../../../contracts/errors.js";
+import { z } from "zod";
+
+const agyPayloadSchema = z.strictObject({
+  contents: z.array(z.unknown()).min(1).max(512),
+  generationConfig: z.record(z.string(), z.unknown()),
+  systemInstruction: z.unknown(),
+  tools: z.array(z.unknown()).max(64).optional(),
+});
 
 export async function readAgyRequestBody(
   request: IncomingMessage,
@@ -31,31 +39,39 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function parseAgyRoute(raw: string): Outcome<string> {
+export function parseAgyRoute(
+  raw: string,
+  allowedModels: readonly string[],
+): Outcome<string> {
   const url = new URL(raw, "http://127.0.0.1");
-  const routes = [
-    "/v1internal:loadCodeAssist",
-    "/v1internal:fetchAvailableModels",
-    "/v1internal:generateContent",
-    "/v1internal:streamGenerateContent",
-  ];
-  const streamQuery = url.pathname === routes[3] && url.search === "?alt=sse";
-  if (!routes.includes(url.pathname) || (url.search && !streamQuery))
+  const matched =
+    /^\/v1beta\/models\/([a-zA-Z0-9._-]+):streamGenerateContent$/u.exec(
+      url.pathname,
+    );
+  if (
+    !matched?.[1] ||
+    !allowedModels.includes(matched[1]) ||
+    url.search !== "?alt=sse"
+  )
     return failure("INVALID_INPUT", "Unsupported Antigravity proxy route.");
-  return { ok: true, value: url.pathname + (streamQuery ? url.search : "") };
+  return { ok: true, value: url.pathname + url.search };
 }
 
-export function agyHandshake(model: string) {
-  return { userTier: { userTier: "PAID" }, allowedModels: [model, "auto"] };
-}
-
-export function agyAvailableModels(model: string) {
-  return { models: [{ modelName: model, displayName: model }] };
-}
-
-export function respondAgyJson(res: ServerResponse, value: unknown): void {
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(value));
+export function admitAgyPayload(
+  raw: unknown,
+  outputTokensLimit: number,
+): Outcome<Readonly<Record<string, unknown>>> {
+  const parsed = agyPayloadSchema.safeParse(raw);
+  if (!parsed.success)
+    return failure("INVALID_INPUT", "Unsupported Antigravity request payload.");
+  const generationConfig = Object.freeze({
+    ...parsed.data.generationConfig,
+    maxOutputTokens: outputTokensLimit,
+  });
+  return {
+    ok: true,
+    value: Object.freeze({ ...parsed.data, generationConfig }),
+  };
 }
 
 export function respondAgyError(

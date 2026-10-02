@@ -1,0 +1,39 @@
+{
+  "kind": "agy_offline_conformance",
+  "schema_version": "1.0.0",
+  "expected_version": "1.2.14",
+  "observed_version": "1.2.14",
+  "executable_digest": "sha256:a33fdf084ecd199df00694f35a243200a3efacb1f4f3adf04ca19d76f7f714c4",
+  "binary_unchanged": true,
+  "config_digest": "sha256:be0b72d37aa1f5bbde7248e634acaac49a9a27e405394a69ad12eb11cf766739",
+  "hooks_digest": "sha256:e75edefdf7a53eb6485901d18bf570a286e2e27422fb6fe71bb053f8e30447d0",
+  "sandbox_digest": "sha256:2ac590c71dd1fed04047eb36a66959d00369e8922a69c275ce34b2d6e35dd166",
+  "external_model_attempts": 0,
+  "local_provider_requests": 3,
+  "proxy_requests": 3,
+  "ledger_events": 6,
+  "rejected_provider_requests": 0,
+  "provider_paths": [
+    "/v1beta/models/gemini-3.1-flash-lite-preview:streamGenerateContent?alt=sse",
+    "/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse",
+    "/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse"
+  ],
+  "runner_sentinel_configured": true,
+  "upstream_fixture_credential_only": true,
+  "hook_observed": true,
+  "denied_tool": "run_command",
+  "denied_effect_absent": true,
+  "completed": true,
+  "usage": {
+    "input_tokens": 20,
+    "output_tokens": 5,
+    "thinking_tokens": 0,
+    "cache_read_tokens": 0,
+    "total_tokens": 25
+  },
+  "direct_gemini_route": true,
+  "cloud_code_route": false,
+  "failure": null,
+  "enforced_conformance": false,
+  "mandatory_capabilities": "PARTIAL"
+}

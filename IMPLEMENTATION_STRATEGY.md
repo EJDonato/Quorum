@@ -247,8 +247,8 @@ Historical starting backlog (not full milestone exit gates):
 - [x] Implement the initial schema/error contracts and pure session reducer.
 - [x] Demonstrate one rejected transition and one crash-replayed transition before connecting real model-driven mutations.
 
-Rejected transitions, durable journal reconstruction, stale-cache rejection, and interrupted finalization recovery are tested offline. Full workflow effect/restart reconciliation remains pending. M0 remains BLOCKED: candidate Codex enforcement components, Antigravity hook/upstream components and generic cgroup cancellation exist, but the pinned runners have not passed the final containerized conformance path. Antigravity's real hook and provider stream semantics remain unverified; `test:conformance` and capability-aware `doctor` remain unavailable.
+Rejected transitions, durable journal reconstruction, stale-cache rejection, and interrupted finalization recovery are tested offline. Full workflow effect/restart reconciliation remains pending. M0 remains BLOCKED: candidate Codex enforcement components, a pinned Antigravity local proxy/hook probe, and generic cgroup cancellation exist, but the runners have not passed the final containerized conformance path. Antigravity's actual-provider and cancellation semantics remain unverified; `test:conformance` and capability-aware `doctor` remain unavailable.
 
-Next: integrate containerized runner adapters with the broker and workflow orchestrator, followed by release-only conformance evaluation. Production runner integration still requires observed conformance evidence.
+Next: provision a digest-pinned Linux image for each runner, starting with `agy` 1.2.14, pass the implemented image preflight, then integrate the containerized adapters with the broker and workflow orchestrator. Production runner integration still requires final-container and actual-provider conformance evidence.
 
 This strategy authorizes no implementation or publication by itself. Implementation began after the user's explicit request; publication still requires separate authorization.

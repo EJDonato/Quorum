@@ -29,6 +29,8 @@
     "probe:controls": "npm run build && node scripts/probe-controls.mjs",
     "probe:codex:offline": "npm run build && node scripts/probe-codex-offline.mjs",
     "probe:agy:offline": "npm run build && node scripts/probe-agy-offline.mjs",
+    "probe:agy:conformance": "npm run build && node scripts/probe-agy-conformance.mjs",
+    "probe:agy:container-image": "npm run build && node scripts/probe-agy-container-image.mjs",
     "probe:container": "npm run build && node scripts/probe-container.mjs",
     "probe:container:cancellation": "npm run build && node scripts/probe-container-cancellation.mjs",
     "probe:cancellation": "npm run build && node scripts/probe-cancellation.mjs",
