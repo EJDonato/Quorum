@@ -2,7 +2,9 @@
 
 Date: 2026-10-02. **Both runners remain BLOCKED for enforced operation.** This investigation establishes current metadata and offline harness behavior; it does not prove impossibility for every integration surface or version. It supersedes capability conclusions in the earlier feasibility matrix where those conclusions overstate accounting or cancellation.
 
-Requirements: PRD Sections 3.1, 4.2, 7 and acceptance criteria 6, 10, 12; SYSTEM_DESIGN Sections 2 and 5.2; implementation milestone M0. No runtime adapter, product requirement, or TypeScript architecture was changed. No model request, credential inspection, package installation, image pull, or new real-container experiment was performed.
+Implementation follow-up: the [offline Codex protocol and local fake-provider probe](codex-offline-protocol.md) is now implemented and exercised. It proves credential-free initialization and local endpoint substitution for Codex 0.159.3, exposes a remaining built-in tool and the absence of an output-token bound in the captured request, and adds deterministic regression coverage. These observations do not clear M0. The metadata-only work described below remains a historical investigation; the follow-up records its additional processes and failures separately.
+
+Requirements: PRD Sections 3.1, 4.2, 7 and acceptance criteria 6, 10, 12; SYSTEM_DESIGN Sections 2 and 5.2; implementation milestone M0. For the original metadata investigation, no runtime adapter, product requirement, or TypeScript architecture was changed, and no model request, credential inspection, package installation, image pull, or new real-container experiment was performed. The subsequent offline implementation sent only local fake-provider requests, as recorded separately above.
 
 ## Capability matrix
 
@@ -62,7 +64,9 @@ Sources fetched on 2026-10-02; current documentation is not version-pinned runti
 - [Antigravity headless](https://www.antigravity.google/docs/cli/headless/) documents initialization tool inventory, per-step usage and parsed structured output. It also describes cumulative usage across streamed turns. Production normalization must avoid summing cumulative terminal records repeatedly or guessing cache/thinking overlap.
 - [Antigravity SDK tools](https://www.antigravity.google/docs/sdk/tools/) documents capabilities filtering. This is a Python SDK example, not observed CLI support. Preserve the TypeScript harness; do not add an orchestration framework or transfer SDK claims to CLI 1.2.14.
 
-## Reviewable experiment plan: not authorized or executed
+## Experiment plan and implementation status
+
+The user subsequently authorized implementation. Step 1 is implemented for Codex and step 2 has one real-runner/local-fake-provider observation plus offline protocol/accounting fixtures; neither is full capability conformance. Antigravity filtering, the remaining retry/iteration cases, final runner isolation and paid confirmation remain outstanding. No paid capability experiment has been executed. See [the implementation report](codex-offline-protocol.md) for precise limits and retained failures.
 
 Proceed offline first. A live execution command is intentionally unavailable until the transport, credential boundary and request ceiling are concrete and reviewable. Existing probe:runners only tests schema/connectivity and cannot execute the capability experiments below safely. Its historical authorizations do not authorize new attempts.
 

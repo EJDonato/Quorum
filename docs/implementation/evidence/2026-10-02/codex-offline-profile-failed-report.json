@@ -1,0 +1,14 @@
+{
+  "kind": "codex_offline_protocol",
+  "schema_version": "1.0.0",
+  "failure": "INFRASTRUCTURE_FAILED",
+  "enforced_conformance": false,
+  "external_model_attempts": 0,
+  "initialized": false,
+  "registered": false,
+  "completed": false,
+  "effective_tool_inventory": null,
+  "usage": null,
+  "provider_requests": [],
+  "mandatory_capabilities": "UNVERIFIED"
+}

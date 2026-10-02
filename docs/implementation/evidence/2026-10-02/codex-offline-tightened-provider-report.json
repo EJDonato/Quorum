@@ -1,0 +1,58 @@
+{
+  "kind": "codex_offline_protocol",
+  "schema_version": "1.0.0",
+  "failure": null,
+  "enforced_conformance": false,
+  "external_model_attempts": 0,
+  "initialized": true,
+  "registered": true,
+  "completed": true,
+  "effective_tool_inventory": null,
+  "usage": {
+    "inputTokens": 10,
+    "outputTokens": 3,
+    "cachedInputTokens": 2,
+    "reasoningOutputTokens": 1,
+    "totalTokens": 13
+  },
+  "provider_requests": [
+    {
+      "tools": [
+        "request_user_input",
+        "repo.read"
+      ],
+      "max_output_tokens": null,
+      "hard_total_ceiling_verified": false
+    }
+  ],
+  "mandatory_capabilities": "UNVERIFIED",
+  "observed_version": "0.159.3",
+  "executable_digest": "sha256:4d210f7c5a18fd0386434df23b5bdbb8c0e7257d3e8a2b30b0769c8bbe99a878",
+  "binary_unchanged": true,
+  "protocol_digests": {
+    "v1/InitializeParams.json": "sha256:b55124e7c0f36a1789396daa5578217a92be67f053903696236686e59f6f212e",
+    "v2/ThreadStartParams.json": "sha256:80a40a7fac15b4bf70efb7f893fb353acc0a0d30c68f54aee4f01923deca85de",
+    "v2/TurnStartParams.json": "sha256:07771223642e1b61bd9aac0069fc0f98143a1c047724ca02c7ceb13653442738"
+  },
+  "config_digest": "sha256:46da81cddd85f17e5070e1a5f36708ad6d9ca7687ea46abd09273dfedb353f43",
+  "sandbox_digest": "sha256:6d9250793fe7a76df2b9624cdc7f37fddf36e6d35871c9635caf4935ae6dcbd2",
+  "notifications": [
+    "remoteControl/status/changed",
+    "thread/started",
+    "other",
+    "other",
+    "turn/started",
+    "other",
+    "other",
+    "other",
+    "other",
+    "other",
+    "thread/tokenUsage/updated",
+    "other",
+    "other",
+    "turn/completed"
+  ],
+  "rejected_provider_requests": 0,
+  "exit_code": null,
+  "cleanup": "PROCESS_GROUP_ONLY_UNVERIFIED"
+}

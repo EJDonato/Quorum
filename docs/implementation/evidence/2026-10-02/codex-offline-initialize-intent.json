@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "codex_offline_protocol",
+  "expected_version": "0.159.3",
+  "external_model_attempts": 0,
+  "fake_provider": false,
+  "timeout_ms": 10000,
+  "max_output_bytes": 1048576,
+  "max_fixture_requests": 1,
+  "enforced_conformance": false
+}

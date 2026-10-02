@@ -1,0 +1,18 @@
+model = "quorum-fixture-model"
+model_provider = "quorum_fixture"
+web_search = "disabled"
+[features]
+shell_tool = false
+unified_exec = false
+multi_agent = false
+goals = false
+hooks = false
+plugins = false
+[model_providers.quorum_fixture]
+name = "Offline fixture"
+base_url = "http://127.0.0.1:58596/v1"
+wire_api = "responses"
+requires_openai_auth = false
+request_max_retries = 0
+stream_max_retries = 0
+supports_websockets = false

@@ -26,6 +26,7 @@
     "test:conformance": "node scripts/unavailable.mjs conformance",
     "probe:runners": "npm run build && node scripts/probe-runners.mjs",
     "probe:controls": "npm run build && node scripts/probe-controls.mjs",
+    "probe:codex:offline": "npm run build && node scripts/probe-codex-offline.mjs",
     "probe:container": "npm run build && node scripts/probe-container.mjs",
     "probe:cancellation": "npm run build && node scripts/probe-cancellation.mjs",
     "eval": "node scripts/unavailable.mjs evaluation",
