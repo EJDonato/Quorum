@@ -29,6 +29,7 @@ await test("/foundation drafts and publishes the three planning documents", asyn
             runnerVersion: "0.159.3",
             model: "gpt-6-sol",
             text,
+            conversationId: "foundation-thread",
           },
         });
       },

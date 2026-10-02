@@ -3,6 +3,7 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import { resolve } from "node:path";
 import { readConfiguration } from "../../src/infrastructure/configuration.js";
+import { createFakeRunnerAdapter } from "../fixtures/fake-runner.js";
 import {
   dispatchReplLine,
   handleDoctorCommand,
@@ -14,6 +15,7 @@ const fixture = resolve("tests/fixtures/config.json");
 await test("dispatchReplLine sends freeform text to direct read-only runner", async () => {
   let promptSeen = "";
   let timeoutSeen = 0;
+  const conversations: Array<string | undefined> = [];
   const stdout = new PassThrough();
   let progressOutput = "";
   stdout.on("data", (chunk: Buffer) => {
@@ -25,6 +27,7 @@ await test("dispatchReplLine sends freeform text to direct read-only runner", as
     directPrompt: (request, _signal, onProgress) => {
       promptSeen = request.prompt;
       timeoutSeen = request.timeoutMs;
+      conversations.push(request.conversationId);
       onProgress?.({ phase: "checking", message: "Checking runner version." });
       onProgress?.({ phase: "tool", message: "Reading files: README.md" });
       return Promise.resolve({
@@ -34,6 +37,7 @@ await test("dispatchReplLine sends freeform text to direct read-only runner", as
           runnerVersion: "1.2.14",
           model: "gemini-3.8-flash-medium",
           text: "Quorum coordinates revision-bound coding roles.",
+          conversationId: "conversation-1",
         },
       });
     },
@@ -47,7 +51,8 @@ await test("dispatchReplLine sends freeform text to direct read-only runner", as
   };
 
   const res = await dispatchReplLine(state, io, "explain how quorum works");
-  assert.equal(promptSeen, "explain how quorum works");
+  assert.match(promptSeen, /lightweight, read-only Quorum conversation/);
+  assert.match(promptSeen, /User request:\nexplain how quorum works/);
   assert.equal(timeoutSeen, 120_000);
   assert.match(progressOutput, /\[agy\] Checking runner version/);
   assert.match(progressOutput, /\[agy\] Reading files: README.md/);
@@ -55,6 +60,12 @@ await test("dispatchReplLine sends freeform text to direct read-only runner", as
   assert.match(res.text, /Quorum coordinates revision-bound coding roles/);
   assert.match(res.text, /not Quorum approval evidence/);
   assert.doesNotMatch(res.text, /Workflow Pipeline Execution Stages/);
+  await dispatchReplLine(state, io, "and what does it verify?");
+  assert.deepEqual(conversations, [undefined, "conversation-1"]);
+  assert.equal(
+    state.timings?.filter((timing) => timing.operation === "prompt").length,
+    2,
+  );
 });
 
 await test("interactive direct response streams to the terminal", async () => {
@@ -75,6 +86,7 @@ await test("interactive direct response streams to the terminal", async () => {
           runnerVersion: "0.159.3",
           model: "gpt-6-sol",
           text: "Done.",
+          conversationId: "thread-1",
         },
       }),
   };
@@ -124,10 +136,27 @@ await test("freeform prompt reports direct runner failure without claiming dispa
 
 await test("/run slash command validates prompt and executes session runner", async () => {
   let sessionExecuted = false;
+  let invocationTimeoutSeen = 0;
+  const fakeAdapter = createFakeRunnerAdapter();
   const io: ReplIo = {
     readConfig: readConfiguration,
-    sessionRunner: (opts) => {
+    stdout: new PassThrough(),
+    runnerAdapterFactory: () => ({
+      ...fakeAdapter,
+      invoke: (request, signal, workspace) => {
+        invocationTimeoutSeen = request.limits.timeout_ms;
+        return fakeAdapter.invoke(request, signal, workspace);
+      },
+    }),
+    sessionRunner: async (opts) => {
       sessionExecuted = true;
+      const stage = await opts.hooks.onPlan?.({
+        workspaceDir: "/fake/workspace",
+        draftDir: "/fake/draft",
+        metaDir: "/fake/meta",
+        metaFile: "/fake/meta/meta.json",
+      });
+      assert.equal(stage?.ok, true);
       return Promise.resolve({
         ok: true,
         value: {
@@ -201,13 +230,14 @@ await test("/run slash command validates prompt and executes session runner", as
   assert.match(missingPrompt.text, /Missing prompt for \/run/);
 
   const ran = await dispatchReplLine(state, io, "/run Add test helper");
-  assert.match(ran.text, /completed!/);
+  assert.match(ran.text, /completed in \d+(?:ms|\.\d+s)!/);
   assert.match(ran.text, /State: COMPLETED/);
   assert.match(
     ran.text,
     /Commit OID: 4b825dc642cb6eb9a060e54bf8d69288fbee4904/,
   );
   assert.equal(sessionExecuted, true);
+  assert.equal(invocationTimeoutSeen, 600_000);
   assert.ok(state.activeSessionId);
 });
 

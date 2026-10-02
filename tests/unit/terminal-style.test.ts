@@ -109,5 +109,5 @@ await test("non-interactive progress remains stable plain text", () => {
   display.report({ phase: "working", message: "Still working." });
   display.stop();
 
-  assert.equal(captured, "[agy] Still working.\n");
+  assert.match(captured, /^\[agy\] Still working\. \(\d+\.\d+s\)\n$/);
 });

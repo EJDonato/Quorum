@@ -88,6 +88,8 @@ export function directPromptArgs(request: DirectPromptRequest): string[] {
       "resume",
       "--model",
       request.model,
+      "-c",
+      'sandbox_mode="read-only"',
       "--skip-git-repo-check",
       "--json",
       request.conversationId,

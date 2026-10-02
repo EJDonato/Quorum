@@ -110,6 +110,15 @@ await test("dispatchReplLine handles /help, /status, /diff, /clear, and /exit", 
   const diff = await dispatchReplLine(state, io, "/diff");
   assert.match(diff.text, /No active candidate diff/);
 
+  state.directSessions = { agy: "conversation-1" };
+  const fresh = await dispatchReplLine(state, io, "/new");
+  assert.match(fresh.text, /fresh agy direct conversation/);
+  assert.equal(state.directSessions.agy, undefined);
+
+  state.timings = [{ operation: "prompt", stage: "total", durationMs: 1_250 }];
+  const timings = await dispatchReplLine(state, io, "/timings");
+  assert.match(timings.text, /prompt\/total: 1\.3s/);
+
   const exit = await dispatchReplLine(state, io, "/exit");
   assert.equal(exit.shouldExit, true);
   assert.equal(state.exitRequested, true);
@@ -168,6 +177,7 @@ await test("startRepl drains an asynchronous prompt after piped input closes", a
           runnerVersion: "1.2.14",
           model: "gemini-3.8-flash-medium",
           text: "A delayed answer.",
+          conversationId: "conversation-delayed",
         },
       };
     },
@@ -269,7 +279,7 @@ await test("/run slash command validates prompt and executes session runner", as
   assert.match(missingPrompt.text, /Missing prompt for \/run/);
 
   const ran = await dispatchReplLine(state, io, "/run Add test helper");
-  assert.match(ran.text, /completed!/);
+  assert.match(ran.text, /completed in \d+(?:ms|\.\d+s)!/);
   assert.match(ran.text, /State: COMPLETED/);
   assert.match(
     ran.text,

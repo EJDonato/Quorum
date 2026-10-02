@@ -57,7 +57,7 @@ export function createDirectPromptRunner(
     });
     if (!completion.ok) return completion;
     onProgress?.({ phase: "finishing", message: "Processing response." });
-    const text = parseCompletion(request.runner, completion.value);
+    const text = parseCompletion(request, completion.value);
     if (!text.ok) return text;
     onProgress?.({ phase: "finishing", message: "Response ready." });
     return {
@@ -125,13 +125,13 @@ function extractVersion(
 }
 
 function parseCompletion(
-  runner: "agy" | "codex",
+  request: DirectPromptRequest,
   result: ProcessRunResult,
 ): Outcome<{ value: string; conversationId: string }> {
-  if (runner === "agy") return parseAgyCompletion(result);
+  if (request.runner === "agy") return parseAgyCompletion(result);
   if (result.exitCode !== 0)
     return failure("CAPABILITY_MISSING", "Codex direct prompt failed.");
-  return parseCodexCompletion(result.stdout);
+  return parseCodexCompletion(result.stdout, request.conversationId);
 }
 
 function parseAgyCompletion(
@@ -164,10 +164,11 @@ function parseAgyCompletion(
 
 function parseCodexCompletion(
   raw: string,
+  existingConversationId?: string,
 ): Outcome<{ value: string; conversationId: string }> {
   const messages: string[] = [];
   let completed = false;
-  let conversationId: string | null = null;
+  let conversationId: string | null = existingConversationId ?? null;
   for (const line of raw.split(/\r?\n/u).filter(Boolean)) {
     let value: unknown;
     try {

@@ -6,9 +6,13 @@ import { createRunnerAdapter } from "../infrastructure/adapters/factory.js";
 import { readSourceRepositoryInfo } from "../infrastructure/git/operations.js";
 import { createWorkflowVerification } from "../application/workflow-verification.js";
 import type { WorkflowVerification } from "../application/session-init.js";
+import type { RepositoryConfig } from "../contracts/config.js";
 import { sanitizeText } from "./repl-banner.js";
 import { recordReplTiming, formatDuration } from "./repl-performance.js";
-import { createReplProgressDisplay } from "./repl-progress.js";
+import {
+  createReplProgressDisplay,
+  type ReplProgressDisplay,
+} from "./repl-progress.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
 export async function handleRunCommand(
@@ -33,6 +37,25 @@ export async function handleRunCommand(
     return { text: `Repository error: ${repo.error.message}` };
   }
 
+  return runConfiguredSession({
+    state,
+    io,
+    config: config.value,
+    baseSha: repo.value.headSha,
+    objectFormat: repo.value.objectFormat,
+    cleanPrompt,
+  });
+}
+
+async function runConfiguredSession(options: {
+  state: ReplState;
+  io: ReplIo;
+  config: RepositoryConfig;
+  baseSha: string;
+  objectFormat: "sha1" | "sha256";
+  cleanPrompt: string;
+}): Promise<ReplActionOutput> {
+  const { state, io, config, baseSha, objectFormat, cleanPrompt } = options;
   const { sessionId, inputDigest } = prepareRunInput(state, cleanPrompt);
   const adapter =
     io.runnerAdapterFactory?.(state.activeRunner) ??
@@ -49,30 +72,16 @@ export async function handleRunCommand(
     sessionId,
     inputDigest,
     responseSchemaRef: { artifact_id: "schema-ref", digest: inputDigest },
-    timeoutMs: config.value.budgets.invocation_timeout_ms,
-    tokensReserved: config.value.budgets.model_tokens,
-    onStage: (event) => {
-      progress.report({
-        phase: event.status === "started" ? "starting" : "finishing",
-        message:
-          event.status === "started"
-            ? `Starting ${event.stage}.`
-            : `${event.stage} ${event.status} in ${formatDuration(event.durationMs)}.`,
-      });
-      if (event.status !== "started")
-        recordReplTiming(state, {
-          operation: "run",
-          stage: event.stage,
-          durationMs: event.durationMs,
-        });
-    },
+    timeoutMs: config.budgets.invocation_timeout_ms,
+    tokensReserved: config.budgets.model_tokens,
+    onStage: createRunStageReporter(state, progress),
   });
 
   const verification =
     io.verificationFactory?.(sessionId, inputDigest) ??
     createWorkflowVerification({
       rootDir: state.rootDir,
-      config: config.value,
+      config,
       sessionId,
       inputDigest,
     });
@@ -80,8 +89,8 @@ export async function handleRunCommand(
   const result = await executeRunSession(io, {
     state,
     sessionId,
-    baseSha: repo.value.headSha,
-    objectFormat: repo.value.objectFormat,
+    baseSha,
+    objectFormat,
     hooks,
     verification,
   }).finally(progress.stop);
@@ -89,6 +98,31 @@ export async function handleRunCommand(
   recordReplTiming(state, { operation: "run", stage: "total", durationMs });
 
   return formatRunResult(sessionId, result, durationMs);
+}
+
+function createRunStageReporter(
+  state: ReplState,
+  progress: ReplProgressDisplay,
+) {
+  return (event: {
+    stage: string;
+    status: "started" | "completed" | "failed";
+    durationMs: number;
+  }) => {
+    progress.report({
+      phase: event.status === "started" ? "starting" : "finishing",
+      message:
+        event.status === "started"
+          ? `Starting ${event.stage}.`
+          : `${event.stage} ${event.status} in ${formatDuration(event.durationMs)}.`,
+    });
+    if (event.status !== "started")
+      recordReplTiming(state, {
+        operation: "run",
+        stage: event.stage,
+        durationMs: event.durationMs,
+      });
+  };
 }
 
 async function executeRunSession(

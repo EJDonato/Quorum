@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createDirectPromptRunner } from "../../src/infrastructure/adapters/direct-prompt.js";
+import { directPromptArgs } from "../../src/infrastructure/adapters/direct-prompt-progress.js";
 import type { Outcome } from "../../src/contracts/errors.js";
 import {
   runProcess,
@@ -56,6 +57,7 @@ await test("direct Agy prompt verifies version and uses bounded read-only argume
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.value.text, "QUORUM_OK");
+  assert.equal(result.value.conversationId, "conversation-1");
   assert.deepEqual(calls[0]?.args, ["--version"]);
   assert.deepEqual(calls[1]?.args, [
     "--sandbox",
@@ -131,10 +133,10 @@ await test("direct Codex prompt accepts one completed agent message", async () =
     "--skip-git-repo-check",
     "--sandbox",
     "read-only",
-    "--ephemeral",
     "--json",
     "Reply with QUORUM_OK.",
   ]);
+  assert.equal(result.value.conversationId, "thread-1");
   assert.deepEqual(progress, [
     "Checking runner version.",
     "Starting gpt-6-sol in read-only mode.",
@@ -191,6 +193,7 @@ await test("direct prompt stops before generation on version mismatch", async ()
 await test("direct prompt rejects failed Codex output and joins response segments", async () => {
   let calls = 0;
   const output = [
+    '{"type":"thread.started","thread_id":"thread-2"}',
     '{"type":"item.completed","item":{"type":"agent_message","text":"one"}}',
     '{"type":"item.completed","item":{"type":"agent_message","text":"two"}}',
     '{"type":"turn.completed"}',
@@ -219,6 +222,7 @@ await test("direct prompt rejects failed Codex output and joins response segment
       runnerVersion: "0.159.3",
       model: "gpt-6-sol",
       text: "one\n\ntwo",
+      conversationId: "thread-2",
     },
   });
 
@@ -233,6 +237,45 @@ await test("direct prompt rejects failed Codex output and joins response segment
   });
   const failure = await failed(request);
   assert.equal(failure.ok, false);
+});
+
+await test("direct prompt resume arguments preserve read-only mode", () => {
+  const common = {
+    executable: "runner",
+    expectedVersion: "1.0.0",
+    model: "model-1",
+    prompt: "follow up",
+    cwd: "/repo",
+    timeoutMs: 60_000,
+    conversationId: "session-123",
+  };
+  assert.deepEqual(directPromptArgs({ ...common, runner: "agy" }), [
+    "--sandbox",
+    "--mode",
+    "plan",
+    "--model",
+    "model-1",
+    "--print-timeout",
+    "60s",
+    "--output-format",
+    "json",
+    "--conversation",
+    "session-123",
+    "--print",
+    "follow up",
+  ]);
+  assert.deepEqual(directPromptArgs({ ...common, runner: "codex" }), [
+    "exec",
+    "resume",
+    "--model",
+    "model-1",
+    "-c",
+    'sandbox_mode="read-only"',
+    "--skip-git-repo-check",
+    "--json",
+    "session-123",
+    "follow up",
+  ]);
 });
 
 await test("direct Agy prompt preserves a bounded provider error", async () => {

@@ -21,9 +21,12 @@ const defaultOptions = {
 
 void test("createRunnerOrchestrationHooks executes successful stages through runner adapter", async () => {
   const adapter = createFakeRunnerAdapter();
+  const stages: Array<{ stage: string; status: string; durationMs: number }> =
+    [];
   const hooks = createRunnerOrchestrationHooks({
     ...defaultOptions,
     adapter,
+    onStage: (event) => stages.push(event),
   });
 
   assert.ok(hooks.onPlan);
@@ -45,6 +48,23 @@ void test("createRunnerOrchestrationHooks executes successful stages through run
     "sha256:" + "b".repeat(64),
   );
   assert.equal(reviewResult.ok, true);
+  assert.deepEqual(
+    stages.map((event) => `${event.stage}:${event.status}`),
+    [
+      "planner/planning:started",
+      "planner/planning:completed",
+      "qa/test_authoring:started",
+      "qa/test_authoring:completed",
+      "developer/implementation:started",
+      "developer/implementation:completed",
+      "qa/final:started",
+      "qa/final:completed",
+    ],
+  );
+  assert.equal(
+    stages.every((event) => event.durationMs >= 0),
+    true,
+  );
 });
 
 void test("createRunnerOrchestrationHooks fails when runner execution fails", async () => {
