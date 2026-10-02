@@ -38,14 +38,15 @@ export function createDefaultConfig(
   options: CreateConfigOptions = {},
 ): RepositoryConfig {
   const adapterName = options.adapter ?? "codex";
-  const model =
-    options.model ??
-    (adapterName === "codex" ? "codex-default" : "agy-default");
+  const defaultVersion = adapterName === "codex" ? "0.159.3" : "1.2.14";
+  const defaultModel = adapterName === "codex" ? "codex-1" : "gemini-2.5-pro";
+  const model = options.model ?? defaultModel;
+  const version = options.adapterVersion ?? defaultVersion;
   return repositoryConfigSchema.parse({
     schema_version: "1.0.0",
     adapter: {
       name: adapterName,
-      version: options.adapterVersion ?? "0.1.0",
+      version,
       model,
     },
     mode: options.mode ?? "enforced",

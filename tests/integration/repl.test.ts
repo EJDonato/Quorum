@@ -260,3 +260,62 @@ await test("/run slash command validates prompt and executes session runner", as
   assert.equal(sessionExecuted, true);
   assert.ok(state.activeSessionId);
 });
+
+await test("/doctor reports operational readiness for verified configurations", async () => {
+  const io: ReplIo = {
+    readConfig: () =>
+      Promise.resolve({
+        ok: true,
+        value: {
+          schema_version: "1.0.0",
+          adapter: {
+            name: "codex",
+            version: "0.159.3",
+            model: "codex-1",
+          },
+          mode: "enforced",
+          validation_image:
+            "quorum-validation@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          commands: [
+            {
+              check_id: "test",
+              kind: "test",
+              executable: "npm",
+              args: ["test"],
+            },
+          ],
+          permitted_environment_keys: ["NODE_ENV"],
+          paths: {
+            implementation: ["src"],
+            tests: ["tests"],
+            protected: ["package.json"],
+            sensitive: [".env"],
+          },
+          budgets: {
+            repairs_per_stage: 2,
+            repairs_total: 6,
+            invocation_timeout_ms: 600000,
+            check_timeout_ms: 600000,
+            active_session_ms: 3600000,
+            model_tokens: 200000,
+          },
+        },
+      }),
+  };
+  const state: ReplState = {
+    configPath: ".quorum/config.json",
+    activeRunner: "codex",
+    rootDir: process.cwd(),
+    activeSessionId: null,
+    exitRequested: false,
+  };
+
+  const output = await handleDoctorCommand(state, io);
+  assert.match(output.text, /Ready: true \(operational\)/);
+  assert.match(output.text, /✓ runner_conformance: verified/);
+  assert.match(output.text, /✓ broker_only_tools: verified/);
+  assert.match(output.text, /✓ container_isolation: verified/);
+  assert.match(output.text, /✓ usage_and_hard_token_ceiling: verified/);
+  assert.match(output.text, /✓ descendant_cancellation: verified/);
+  assert.match(output.text, /✓ validation_environment: verified/);
+});

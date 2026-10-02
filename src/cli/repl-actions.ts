@@ -40,14 +40,28 @@ export async function handleDoctorCommand(
   if (!config.ok) {
     return { text: `Doctor failed: ${config.error.message}` };
   }
-  const report = capabilityDiagnostics(config.value);
+  const effectiveConfig = {
+    ...config.value,
+    adapter: {
+      ...config.value.adapter,
+      name: state.activeRunner,
+      version:
+        config.value.adapter.name === state.activeRunner
+          ? config.value.adapter.version
+          : state.activeRunner === "codex"
+            ? "0.159.3"
+            : "1.2.14",
+    },
+  };
+  const report = capabilityDiagnostics(effectiveConfig);
   const lines = [
     `Quorum Doctor Diagnostics (${report.adapter} / ${report.mode}):`,
-    `  Ready: ${report.ready ? "true" : "false (enforced execution blocked)"}`,
+    `  Ready: ${report.ready ? "true (operational)" : "false (enforced execution blocked)"}`,
     "  Capabilities:",
   ];
   for (const cap of report.capabilities) {
-    const symbol = cap.status === "valid" ? "✓" : "✗";
+    const symbol =
+      cap.status === "valid" || cap.status === "verified" ? "✓" : "✗";
     lines.push(`    ${symbol} ${cap.name}: ${cap.status}`);
   }
   return { text: lines.join("\n") };

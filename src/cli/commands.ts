@@ -157,10 +157,12 @@ async function handleConfigOrDoctorCommand(
   }
   const report = capabilityDiagnostics(configuration.value);
   return {
-    exitCode: 3,
+    exitCode: report.ready ? 0 : 3,
     json: options.json,
-    body: { schema_version: "1.0.0", ok: false, ...report },
-    text: "Configuration is valid. Runtime blocked: runner conformance, broker, isolation, usage limits, cancellation, and checks remain unverified.",
+    body: { schema_version: "1.0.0", ok: report.ready, ...report },
+    text: report.ready
+      ? `Configuration is valid. All capabilities verified for ${report.adapter} (${report.mode} mode).`
+      : "Configuration is valid. Runtime blocked: runner conformance, broker, isolation, usage limits, cancellation, and checks remain unverified.",
   };
 }
 
