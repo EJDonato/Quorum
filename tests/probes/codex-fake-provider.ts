@@ -20,16 +20,42 @@ const requestSchema = z.object({
   max_output_tokens: z.number().int().positive().optional(),
 });
 
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function namedTypes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const record = objectRecord(entry);
+    return typeof record?.type === "string" ? [record.type] : [];
+  });
+}
+
 export function inspectFixtureRequest(value: unknown) {
   const parsed = requestSchema.safeParse(value);
-  if (!parsed.success) return null;
+  const record = objectRecord(value);
+  if (!parsed.success || !record) return null;
   return {
+    top_level_fields: Object.keys(record).sort(),
+    input_container: Array.isArray(record.input)
+      ? "array"
+      : typeof record.input,
+    input_items: Array.isArray(record.input) ? record.input.length : null,
+    input_item_types: namedTypes(record.input),
+    tool_types: namedTypes(record.tools),
     tools: parsed.data.tools.flatMap((tool) =>
       tool.tools
         ? tool.tools.map((entry) => `${tool.name ?? tool.type}.${entry.name}`)
         : [tool.name ?? tool.type],
     ),
     max_output_tokens: parsed.data.max_output_tokens ?? null,
+    store: record.store === false ? false : null,
+    stream: true as const,
+    has_previous_response_id: "previous_response_id" in record,
+    has_conversation: "conversation" in record,
     // No documented total input+output ceiling is established by this request.
     hard_total_ceiling_verified: false as const,
   };

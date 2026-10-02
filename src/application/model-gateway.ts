@@ -6,9 +6,9 @@ import {
   modelPayloadSchema,
   modelReservationSchema,
   type ModelPayload,
+  type ModelCapability,
 } from "../contracts/model-gateway.js";
 import { opaqueId, positiveCount } from "../contracts/primitives.js";
-import type { ModelCapability } from "../contracts/model-gateway.js";
 import { failure, type Outcome } from "../contracts/errors.js";
 import type {
   ModelLedgerPort,
@@ -16,8 +16,8 @@ import type {
   ModelProviderPort,
 } from "./model-gateway-ports.js";
 
-export interface ModelGatewayOptions {
-  provider: ModelProviderPort;
+export interface ModelGatewayOptions<TPayload = ModelPayload> {
+  provider: ModelProviderPort<TPayload>;
   ledger: ModelLedgerPort;
   mode: "fixture" | "enforced";
   instructions: string;
@@ -72,21 +72,70 @@ export async function dispatchModelRequest(options: {
   if (!payloadDigest.ok) return payloadDigest;
   if (!capabilityDigest.ok) return capabilityDigest;
   Object.freeze(payload.data.tools);
-  const frozen = Object.freeze(payload.data);
-  return gateway.ledger.exclusive(async (transaction) =>
+  return dispatchPreparedModelRequest({
+    gateway,
+    requestId: options.requestId,
+    payload: Object.freeze(payload.data),
+    signal,
+    outputTokensLimit: payload.data.max_output_tokens,
+    capability: capability.value,
+    payloadDigest: payloadDigest.value,
+    capabilityDigest: capabilityDigest.value,
+  });
+}
+
+export async function dispatchPreparedModelRequest<TPayload>(options: {
+  gateway: ModelGatewayOptions<TPayload>;
+  requestId: string;
+  payload: Readonly<TPayload>;
+  signal: AbortSignal;
+  outputTokensLimit: number;
+  capability?: ModelCapability;
+  payloadDigest?: string;
+  capabilityDigest?: string;
+}): Promise<
+  Outcome<{ output: string; verified: false; tokensCharged: number }>
+> {
+  let capability: ModelCapability;
+  if (options.capability) {
+    const parsed = modelCapabilitySchema.safeParse(options.capability);
+    if (!parsed.success)
+      return failure("CAPABILITY_MISSING", "Provider capability is invalid.");
+    capability = parsed.data;
+  } else {
+    const verified = await verifyModelCapability(options.gateway);
+    if (!verified.ok) return verified;
+    capability = verified.value;
+  }
+  const outputLimit = positiveCount.safeParse(options.outputTokensLimit);
+  if (!opaqueId.safeParse(options.requestId).success || !outputLimit.success)
+    return failure("INVALID_INPUT", "Prepared model request is invalid.");
+  const payloadDigest =
+    typeof options.payloadDigest === "string"
+      ? { ok: true as const, value: options.payloadDigest }
+      : options.gateway.hash(options.payload);
+  if (!payloadDigest.ok) return payloadDigest;
+  const capabilityDigest =
+    typeof options.capabilityDigest === "string"
+      ? { ok: true as const, value: options.capabilityDigest }
+      : options.gateway.hash(capability);
+  if (!capabilityDigest.ok) return capabilityDigest;
+  return options.gateway.ledger.exclusive(async (transaction) =>
     executeReservedRequest({
-      ...options,
-      payload: frozen,
+      gateway: options.gateway,
+      requestId: options.requestId,
+      signal: options.signal,
+      payload: options.payload,
       payloadDigest: payloadDigest.value,
       capabilityDigest: capabilityDigest.value,
       transaction,
-      outputLimit: payload.data.max_output_tokens,
+      outputLimit: outputLimit.data,
     }),
   );
 }
 
-async function verifyModelCapability(
-  gateway: ModelGatewayOptions,
+async function verifyModelCapability<TPayload>(
+  gateway: ModelGatewayOptions<TPayload>,
 ): Promise<Outcome<ModelCapability>> {
   const capability = modelCapabilitySchema.safeParse(
     gateway.provider.capability,
@@ -114,18 +163,20 @@ async function verifyModelCapability(
   return { ok: true, value: capability.data };
 }
 
-interface PreparedRequest {
-  gateway: ModelGatewayOptions;
+interface PreparedRequest<TPayload> {
+  gateway: ModelGatewayOptions<TPayload>;
   requestId: string;
   signal: AbortSignal;
-  payload: Readonly<ModelPayload>;
+  payload: Readonly<TPayload>;
   payloadDigest: string;
   capabilityDigest: string;
   transaction: ModelLedgerTransaction;
   outputLimit: number;
 }
 
-async function executeReservedRequest(request: PreparedRequest) {
+async function executeReservedRequest<TPayload>(
+  request: PreparedRequest<TPayload>,
+) {
   const { gateway, transaction, signal } = request;
   if (transaction.state.requests.has(request.requestId))
     return failure(
@@ -180,8 +231,8 @@ async function executeReservedRequest(request: PreparedRequest) {
   return settleModelRequest(request, generated.value);
 }
 
-async function settleModelRequest(
-  request: PreparedRequest,
+async function settleModelRequest<TPayload>(
+  request: PreparedRequest<TPayload>,
   completion: unknown,
 ) {
   const parsed = modelCompletionSchema.safeParse(completion);

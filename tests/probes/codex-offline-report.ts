@@ -4,7 +4,7 @@ import { probeFailureSchema, usageSchema } from "./codex-offline-protocol.js";
 const digest = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 export const offlineReportSchema = z.strictObject({
   kind: z.literal("codex_offline_protocol"),
-  schema_version: z.literal("1.0.0"),
+  schema_version: z.literal("1.1.0"),
   expected_version: z.string().regex(/^\d+\.\d+\.\d+$/),
   failure: z
     .union([
@@ -29,8 +29,17 @@ export const offlineReportSchema = z.strictObject({
   provider_requests: z
     .array(
       z.strictObject({
+        top_level_fields: z.array(z.string().max(128)).max(128),
+        input_container: z.enum(["array", "string", "undefined", "object"]),
+        input_items: z.number().int().nonnegative().nullable(),
+        input_item_types: z.array(z.string().max(128)).max(1024),
+        tool_types: z.array(z.string().max(128)).max(128),
         tools: z.array(z.string().max(257)).max(16384),
         max_output_tokens: z.number().int().positive().nullable(),
+        store: z.literal(false).nullable(),
+        stream: z.literal(true),
+        has_previous_response_id: z.boolean(),
+        has_conversation: z.boolean(),
         hard_total_ceiling_verified: z.literal(false),
       }),
     )

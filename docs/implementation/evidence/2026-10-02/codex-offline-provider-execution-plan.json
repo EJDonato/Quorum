@@ -1,0 +1,34 @@
+{
+  "executable": "/Users/eltonjames/.codex/packages/standalone/releases/0.159.3-aarch64-apple-darwin/bin/codex",
+  "executable_digest": "sha256:4d210f7c5a18fd0386434df23b5bdbb8c0e7257d3e8a2b30b0769c8bbe99a878",
+  "config_digest": "sha256:5ae08328a2146ee359c76ff32246ac83eb045923f2aeae066a7bc63dde056059",
+  "sandbox_digest": "sha256:432fb37b2925b36c6e36f3949920419461c2945f9ba48ef3f073c00df64729b3",
+  "env": {
+    "HOME": "/private/tmp/quorum-codex-offline-y071aZ/home",
+    "CODEX_HOME": "/private/tmp/quorum-codex-offline-y071aZ/home",
+    "TMPDIR": "/private/tmp/quorum-codex-offline-y071aZ/home",
+    "PATH": "/usr/bin:/bin",
+    "LANG": "en_US.UTF-8",
+    "NO_COLOR": "1"
+  },
+  "cwd": "/private/tmp/quorum-codex-offline-y071aZ/work",
+  "wrapper": "/usr/bin/sandbox-exec",
+  "profile": "/private/tmp/quorum-codex-offline-y071aZ/sandbox.sb",
+  "commands": [
+    [
+      "--version"
+    ],
+    [
+      "app-server",
+      "generate-json-schema",
+      "--experimental",
+      "--out",
+      "/private/tmp/quorum-codex-offline-y071aZ/schemas"
+    ],
+    [
+      "app-server"
+    ]
+  ],
+  "external_model_attempts": 0,
+  "fake_provider_port": 59331
+}

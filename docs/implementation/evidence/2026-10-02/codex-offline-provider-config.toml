@@ -10,7 +10,7 @@ hooks = false
 plugins = false
 [model_providers.quorum_fixture]
 name = "Offline fixture"
-base_url = "http://127.0.0.1:58596/v1"
+base_url = "http://127.0.0.1:59331/v1"
 wire_api = "responses"
 requires_openai_auth = false
 request_max_retries = 0

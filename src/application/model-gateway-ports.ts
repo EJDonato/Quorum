@@ -2,14 +2,14 @@ import type { Outcome } from "../contracts/errors.js";
 import type { GatewayEvent, ModelPayload } from "../contracts/model-gateway.js";
 import type { ModelBudgetState } from "../domain/model-budget.js";
 
-export interface ModelProviderPort {
+export interface ModelProviderPort<TPayload = ModelPayload> {
   capability: unknown;
   countInput(
-    payload: Readonly<ModelPayload>,
+    payload: Readonly<TPayload>,
     signal: AbortSignal,
   ): Promise<Outcome<unknown>>;
   generate(options: {
-    payload: Readonly<ModelPayload>;
+    payload: Readonly<TPayload>;
     signal: AbortSignal;
   }): Promise<Outcome<unknown>>;
 }

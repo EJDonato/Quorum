@@ -153,8 +153,24 @@ void test("fixture request inspection retains tool inventory and output limit wi
     input: [{ content: "FAKE_SECRET_CANARY" }],
   });
   assert.deepEqual(observed, {
+    top_level_fields: [
+      "input",
+      "instructions",
+      "max_output_tokens",
+      "model",
+      "stream",
+      "tools",
+    ],
+    input_container: "array",
+    input_items: 1,
+    input_item_types: [],
+    tool_types: ["function", "namespace"],
     tools: ["shell", "repo.read"],
     max_output_tokens: 32,
+    store: null,
+    stream: true,
+    has_previous_response_id: false,
+    has_conversation: false,
     hard_total_ceiling_verified: false,
   });
   assert.equal(JSON.stringify(observed).includes("FAKE_SECRET_CANARY"), false);
@@ -258,7 +274,7 @@ void test("interrupted completion preserves observed usage without fabricating s
   );
   const result = await invoke(interrupted, {
     fakeProvider: true,
-    timeoutMs: 150,
+    timeoutMs: 1000,
   });
   assert.equal(result.failure, "TIMED_OUT");
   assert.equal(result.protocol.completed, false);
@@ -268,7 +284,7 @@ void test("interrupted completion preserves observed usage without fabricating s
 void test("report schema rejects capability escalation and arbitrary diagnostics", () => {
   const report = {
     kind: "codex_offline_protocol",
-    schema_version: "1.0.0",
+    schema_version: "1.1.0",
     expected_version: "0.159.3",
     failure: null,
     enforced_conformance: false,

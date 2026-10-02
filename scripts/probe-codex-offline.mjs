@@ -69,7 +69,7 @@ async function main() {
   const root = await mkdtemp(join(base, "quorum-codex-offline-"));
   await syncDirectory(base);
   await durableJson(join(root, "intent.json"), {
-    schema_version: "1.0.0",
+    schema_version: "1.1.0",
     kind: "codex_offline_protocol",
     expected_version: values["expected-version"],
     external_model_attempts: 0,
@@ -85,7 +85,7 @@ async function main() {
   let stage = "platform";
   let report = {
     kind: "codex_offline_protocol",
-    schema_version: "1.0.0",
+    schema_version: "1.1.0",
     expected_version: values["expected-version"],
     failure: "INFRASTRUCTURE_FAILED",
     enforced_conformance: false,
