@@ -35,6 +35,8 @@ export function formatHelp(isColor: boolean): string {
     "                       Draft PRD, system design, and implementation plan",
     `  ${yellow}/init${reset}                Initialize .quorum/ configuration and persona templates`,
     `  ${yellow}/runner [agy|codex]${reset}  Show or switch active runner`,
+    `  ${yellow}/new${reset}                 Start a fresh direct conversation`,
+    `  ${yellow}/timings${reset}             Show recent operation and stage timings`,
     `  ${yellow}/doctor${reset}              Check runtime capabilities and verifications`,
     `  ${yellow}/config [file]${reset}       Inspect and validate configuration file`,
     `  ${yellow}/status${reset}              Check active session and lease state`,

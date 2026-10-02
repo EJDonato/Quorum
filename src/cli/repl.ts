@@ -24,6 +24,8 @@ export async function createInitialReplState(
     rootDir,
     activeSessionId: null,
     exitRequested: false,
+    directSessions: {},
+    timings: [],
   };
 }
 

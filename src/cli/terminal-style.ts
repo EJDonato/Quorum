@@ -18,6 +18,7 @@ interface RunnerResponseOptions {
   model: string;
   text: string;
   color: boolean;
+  durationMs?: number;
 }
 
 export function supportsTerminalStyle(output: NodeJS.WritableStream): boolean {
@@ -30,15 +31,19 @@ export function isInteractiveTerminal(output: NodeJS.WritableStream): boolean {
 
 export function formatRunnerResponse(options: RunnerResponseOptions): string {
   const { runner, model, text, color } = options;
+  const timing =
+    options.durationMs === undefined
+      ? ""
+      : `, ${(options.durationMs / 1_000).toFixed(1)}s`;
   if (!color)
     return [
-      `${runner} response (${model}, read-only direct mode):`,
+      `${runner} response (${model}, read-only direct mode${timing}):`,
       sanitizeText(text),
       "",
       "This response is not Quorum approval evidence. Use /run <task> for the council workflow.",
     ].join("\n");
   return [
-    `${ansi.bold}${ansi.cyan}${runner} response${ansi.reset} ${ansi.dim}(${model}, read-only direct mode)${ansi.reset}`,
+    `${ansi.bold}${ansi.cyan}${runner} response${ansi.reset} ${ansi.dim}(${model}, read-only direct mode${timing})${ansi.reset}`,
     formatTerminalMarkdown(text),
     "",
     `${ansi.yellow}◆${ansi.reset} ${ansi.dim}This response is not Quorum approval evidence. Use ${ansi.bold}/run <task>${ansi.reset}${ansi.dim} for the council workflow.${ansi.reset}`,
@@ -124,8 +129,8 @@ export async function writeAnimatedTerminalText(
 ): Promise<void> {
   const visibleLength = [...text.replace(/\x1b\[[0-9;]*m/gu, "")].length;
   const chunkSize =
-    options.chunkSize ?? Math.max(8, Math.ceil(visibleLength / 500));
-  const delayMs = options.delayMs ?? 4;
+    options.chunkSize ?? Math.max(12, Math.ceil(visibleLength / 120));
+  const delayMs = options.delayMs ?? 1;
   const parts = text.split(/(\x1b\[[0-9;]*m)/gu).filter(Boolean);
   for (const part of parts) {
     if (/^\x1b\[[0-9;]*m$/u.test(part)) {

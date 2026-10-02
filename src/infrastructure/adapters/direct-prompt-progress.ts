@@ -12,6 +12,7 @@ export type DirectPromptProcess = (
 
 export const codexEventSchema = z.object({
   type: z.string(),
+  thread_id: z.string().optional(),
   item: z
     .object({
       type: z.string(),
@@ -62,7 +63,10 @@ export async function runDirectCompletion(
 }
 
 export function directPromptArgs(request: DirectPromptRequest): string[] {
-  if (request.runner === "agy")
+  if (request.runner === "agy") {
+    const sessionArgs = request.conversationId
+      ? ["--conversation", request.conversationId]
+      : [];
     return [
       "--sandbox",
       "--mode",
@@ -73,7 +77,20 @@ export function directPromptArgs(request: DirectPromptRequest): string[] {
       `${Math.ceil(request.timeoutMs / 1_000)}s`,
       "--output-format",
       "json",
+      ...sessionArgs,
       "--print",
+      request.prompt,
+    ];
+  }
+  if (request.conversationId)
+    return [
+      "exec",
+      "resume",
+      "--model",
+      request.model,
+      "--skip-git-repo-check",
+      "--json",
+      request.conversationId,
       request.prompt,
     ];
   return [
@@ -83,7 +100,6 @@ export function directPromptArgs(request: DirectPromptRequest): string[] {
     "--skip-git-repo-check",
     "--sandbox",
     "read-only",
-    "--ephemeral",
     "--json",
     request.prompt,
   ];

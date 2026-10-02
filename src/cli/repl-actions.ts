@@ -7,6 +7,7 @@ import {
 } from "../application/inspect-config.js";
 import { formatHelp } from "./repl-banner.js";
 import { handleFoundationCommand } from "./repl-foundation.js";
+import { formatRecentTimings } from "./repl-performance.js";
 import { handlePromptSubmission } from "./repl-prompt.js";
 import { handleRunCommand } from "./repl-run.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
@@ -30,6 +31,20 @@ export function handleRunnerCommand(
   }
   return {
     text: `Unknown runner '${arg}'. Supported runners are 'agy' and 'codex'.`,
+  };
+}
+
+export function handleNewConversationCommand(
+  state: ReplState,
+): ReplActionOutput {
+  const sessions = state.directSessions ?? {};
+  const existed = Boolean(sessions[state.activeRunner]);
+  delete sessions[state.activeRunner];
+  state.directSessions = sessions;
+  return {
+    text: existed
+      ? `Started a fresh ${state.activeRunner} direct conversation.`
+      : `The ${state.activeRunner} direct conversation is already fresh.`,
   };
 }
 
@@ -172,6 +187,12 @@ export async function dispatchReplLine(
   if (trimmed === "/runner" || trimmed.startsWith("/runner ")) {
     const parts = trimmed.split(/\s+/);
     return handleRunnerCommand(state, parts[1]);
+  }
+  if (trimmed === "/new") {
+    return handleNewConversationCommand(state);
+  }
+  if (trimmed === "/timings") {
+    return { text: formatRecentTimings(state) };
   }
   if (trimmed === "/run" || trimmed.startsWith("/run ")) {
     return handleRunCommand(state, io, trimmed.slice(4).trim());

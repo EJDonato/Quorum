@@ -8,6 +8,7 @@ export interface DirectPromptRequest {
   prompt: string;
   cwd: string;
   timeoutMs: number;
+  conversationId?: string;
 }
 
 export interface DirectPromptResponse {
@@ -15,6 +16,7 @@ export interface DirectPromptResponse {
   runnerVersion: string;
   model: string;
   text: string;
+  conversationId: string;
 }
 
 export interface DirectPromptProgress {

@@ -11,6 +11,7 @@ import {
 import type { FoundationStage } from "../prompts/foundation.js";
 import { sanitizeText } from "./repl-banner.js";
 import { createReplProgressDisplay } from "./repl-progress.js";
+import { recordReplTiming } from "./repl-performance.js";
 import { directRunnerIdentity } from "./repl-runner-identity.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
@@ -44,10 +45,16 @@ export async function handleFoundationCommand(
   });
   const publication =
     io.foundationPublication ?? createFoundationPublisher(state.rootDir);
+  const startedAt = Date.now();
   const result = await createFoundationPlan({
     requirements: cleanRequirements,
     draft,
     publication,
+  });
+  recordReplTiming(state, {
+    operation: "foundation",
+    stage: "total",
+    durationMs: Date.now() - startedAt,
   });
   if (!result.ok)
     return {
@@ -78,6 +85,7 @@ function createDraftPort(options: {
   const invoke = io.directPrompt ?? createDirectPromptRunner();
   const output = io.stdout ?? process.stdout;
   return async (stage, prompt) => {
+    const startedAt = Date.now();
     const progress = createReplProgressDisplay({
       output,
       runner: state.activeRunner,
@@ -96,6 +104,11 @@ function createDraftPort(options: {
       undefined,
       progress.report,
     ).finally(progress.stop);
+    recordReplTiming(state, {
+      operation: "foundation",
+      stage,
+      durationMs: Date.now() - startedAt,
+    });
     if (!result.ok) return result;
     return { ok: true, value: result.value.text };
   };

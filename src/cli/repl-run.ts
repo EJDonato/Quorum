@@ -7,6 +7,8 @@ import { readSourceRepositoryInfo } from "../infrastructure/git/operations.js";
 import { createWorkflowVerification } from "../application/workflow-verification.js";
 import type { WorkflowVerification } from "../application/session-init.js";
 import { sanitizeText } from "./repl-banner.js";
+import { recordReplTiming, formatDuration } from "./repl-performance.js";
+import { createReplProgressDisplay } from "./repl-progress.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
 export async function handleRunCommand(
@@ -35,14 +37,35 @@ export async function handleRunCommand(
   const adapter =
     io.runnerAdapterFactory?.(state.activeRunner) ??
     createRunnerAdapter(state.activeRunner);
+  const output = io.stdout ?? process.stdout;
+  const progress = createReplProgressDisplay({
+    output,
+    runner: state.activeRunner,
+  });
+  const startedAt = Date.now();
 
   const hooks = createRunnerOrchestrationHooks({
     adapter,
     sessionId,
     inputDigest,
     responseSchemaRef: { artifact_id: "schema-ref", digest: inputDigest },
-    timeoutMs: config.value.budgets.active_session_ms,
+    timeoutMs: config.value.budgets.invocation_timeout_ms,
     tokensReserved: config.value.budgets.model_tokens,
+    onStage: (event) => {
+      progress.report({
+        phase: event.status === "started" ? "starting" : "finishing",
+        message:
+          event.status === "started"
+            ? `Starting ${event.stage}.`
+            : `${event.stage} ${event.status} in ${formatDuration(event.durationMs)}.`,
+      });
+      if (event.status !== "started")
+        recordReplTiming(state, {
+          operation: "run",
+          stage: event.stage,
+          durationMs: event.durationMs,
+        });
+    },
   });
 
   const verification =
@@ -61,9 +84,11 @@ export async function handleRunCommand(
     objectFormat: repo.value.objectFormat,
     hooks,
     verification,
-  });
+  }).finally(progress.stop);
+  const durationMs = Date.now() - startedAt;
+  recordReplTiming(state, { operation: "run", stage: "total", durationMs });
 
-  return formatRunResult(sessionId, result);
+  return formatRunResult(sessionId, result, durationMs);
 }
 
 async function executeRunSession(
@@ -100,14 +125,15 @@ function prepareRunInput(state: ReplState, cleanPrompt: string) {
 function formatRunResult(
   sessionId: string,
   result: Awaited<ReturnType<typeof runSession>>,
+  durationMs: number,
 ): ReplActionOutput {
   if (!result.ok) {
     return {
-      text: `Session ${sessionId} halted:\n  [${result.error.code}] ${result.error.message}`,
+      text: `Session ${sessionId} halted after ${formatDuration(durationMs)}:\n  [${result.error.code}] ${result.error.message}`,
     };
   }
   const out = [
-    `Session ${sessionId} completed!\n  State: ${result.value.state.state}`,
+    `Session ${sessionId} completed in ${formatDuration(durationMs)}!\n  State: ${result.value.state.state}`,
   ];
   if (result.value.receipt) {
     out.push(`  Commit OID: ${result.value.receipt.commit.oid}`);

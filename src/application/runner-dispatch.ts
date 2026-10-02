@@ -13,6 +13,13 @@ export interface RunnerDispatchOptions {
   responseSchemaRef: ArtifactReference;
   timeoutMs?: number;
   tokensReserved?: number;
+  onStage?: (event: RunnerStageEvent) => void;
+}
+
+export interface RunnerStageEvent {
+  stage: string;
+  status: "started" | "completed" | "failed";
+  durationMs: number;
 }
 
 export function createRunnerOrchestrationHooks(
@@ -60,6 +67,10 @@ async function dispatchRole(input: {
   workspace?: WorkspacePaths;
 }): Promise<Outcome<void>> {
   const { options, assignment, writePaths = [], workspace } = input;
+  const stage = `${assignment.role}/${assignment.phase}`;
+  const startedAt = Date.now();
+  let completed = false;
+  options.onStage?.({ stage, status: "started", durationMs: 0 });
   const request = buildInvocationRequest(options, assignment, writePaths);
   const controller = new AbortController();
   const timeout = setTimeout(
@@ -81,9 +92,15 @@ async function dispatchRole(input: {
         validated.value.error?.message ?? "Role execution failed",
       );
     }
+    completed = true;
     return { ok: true, value: undefined };
   } finally {
     clearTimeout(timeout);
+    options.onStage?.({
+      stage,
+      status: completed ? "completed" : "failed",
+      durationMs: Date.now() - startedAt,
+    });
   }
 }
 

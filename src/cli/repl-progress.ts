@@ -38,7 +38,7 @@ export function createReplProgressDisplay(options: {
     frameIndex += 1;
     const messageColor = progressColor(currentPhase);
     output.write(
-      `\r\x1b[2K${ansi.cyan}[${runner}]${ansi.reset} ${ansi.magenta}${frame} ${verb}${ansi.reset} ${ansi.dim}·${ansi.reset} ${messageColor}${boundedMessage(output, runner, currentMessage)}${ansi.reset}`,
+      `\r\x1b[2K${ansi.cyan}[${runner}]${ansi.reset} ${ansi.magenta}${frame} ${verb}${ansi.reset} ${ansi.dim}+${formatElapsed(Date.now() - startedAt)} ·${ansi.reset} ${messageColor}${boundedMessage(output, runner, currentMessage)}${ansi.reset}`,
     );
   };
   render();
@@ -53,7 +53,9 @@ export function createReplProgressDisplay(options: {
         progress.phase !== "tool" && progress.phase !== "working";
       const logKey = `${progress.phase}:${currentMessage}`;
       if (shouldLog && logKey !== lastLogged) {
-        output.write(`\r\x1b[2K${formatProgressLine(runner, progress)}\n`);
+        output.write(
+          `\r\x1b[2K${formatProgressLine(runner, progress, Date.now() - startedAt)}\n`,
+        );
         lastLogged = logKey;
       }
       render();
@@ -89,9 +91,12 @@ function createPlainDisplay(
   output: NodeJS.WritableStream,
   runner: RunnerName,
 ): ReplProgressDisplay {
+  const startedAt = Date.now();
   return {
     report: (progress) => {
-      output.write(`[${runner}] ${sanitizeText(progress.message)}\n`);
+      output.write(
+        `[${runner}] ${sanitizeText(progress.message)} (${formatElapsed(Date.now() - startedAt)})\n`,
+      );
     },
     stop: () => undefined,
   };
@@ -100,6 +105,7 @@ function createPlainDisplay(
 function formatProgressLine(
   runner: RunnerName,
   progress: DirectPromptProgress,
+  elapsedMs: number,
 ): string {
   const symbols = {
     checking: "◇",
@@ -109,7 +115,11 @@ function formatProgressLine(
     finishing: "✓",
   };
   const color = progressColor(progress.phase);
-  return `${ansi.cyan}[${runner}]${ansi.reset} ${color}${symbols[progress.phase]} ${sanitizeText(progress.message)}${ansi.reset}`;
+  return `${ansi.cyan}[${runner}]${ansi.reset} ${color}${symbols[progress.phase]} ${sanitizeText(progress.message)}${ansi.reset} ${ansi.dim}(${formatElapsed(elapsedMs)})${ansi.reset}`;
+}
+
+function formatElapsed(elapsedMs: number): string {
+  return `${(Math.max(0, elapsedMs) / 1_000).toFixed(1)}s`;
 }
 
 function progressColor(phase: DirectPromptProgress["phase"]): string {

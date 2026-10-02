@@ -17,6 +17,14 @@ export interface ReplState {
   rootDir: string;
   activeSessionId: string | null;
   exitRequested: boolean;
+  directSessions?: Partial<Record<RunnerName, string>>;
+  timings?: ReplTiming[];
+}
+
+export interface ReplTiming {
+  operation: "prompt" | "foundation" | "run";
+  stage: string;
+  durationMs: number;
 }
 
 export interface ReplIo {

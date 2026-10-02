@@ -37,6 +37,18 @@ export const SLASH_COMMAND_DEFINITIONS: readonly SlashCommandDefinition[] = [
     needsArg: false,
   },
   {
+    name: "/new",
+    syntax: "/new",
+    description: "Start a fresh direct conversation",
+    needsArg: false,
+  },
+  {
+    name: "/timings",
+    syntax: "/timings",
+    description: "Show recent operation and stage timings",
+    needsArg: false,
+  },
+  {
     name: "/doctor",
     syntax: "/doctor",
     description: "Check runtime capabilities and verifications",
