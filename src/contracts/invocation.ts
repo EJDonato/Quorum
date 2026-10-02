@@ -143,5 +143,6 @@ export const invocationResultSchema = z
     }
   });
 
+export type RolePhase = z.infer<typeof rolePhaseSchema>;
 export type InvocationRequest = z.infer<typeof invocationRequestSchema>;
 export type InvocationResult = z.infer<typeof invocationResultSchema>;
