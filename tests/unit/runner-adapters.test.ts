@@ -50,7 +50,7 @@ await test("createAgyRunnerAdapter discovers capabilities and validates expected
   assert.equal(caps.value.isolationProfile, "linux-container-v1");
 });
 
-await test("createAgyRunnerAdapter invokes, installs tool-gate hooks and cancels cleanly", async (t) => {
+await test("createAgyRunnerAdapter installs tool gate and rejects missing enforced transport", async (t) => {
   const tmp = await mkdtemp(join(tmpdir(), "quorum-agy-test-"));
   t.after(() => rm(tmp, { recursive: true, force: true }));
 
@@ -75,12 +75,10 @@ await test("createAgyRunnerAdapter invokes, installs tool-gate hooks and cancels
     controller.signal,
     workspace,
   );
-  assert.equal(invokeResult.ok, true);
-  if (!invokeResult.ok) return;
-
-  assert.equal(invokeResult.value.execution_status, "SUCCEEDED");
-  assert.equal(invokeResult.value.invocation_id, request.invocation_id);
-  assert.equal(invokeResult.value.session_id, request.session_id);
+  assert.equal(invokeResult.ok, false);
+  if (invokeResult.ok) return;
+  assert.equal(invokeResult.error.code, "CAPABILITY_MISSING");
+  assert.match(invokeResult.error.message, /transport is not configured/u);
 
   const hooksContent = await readFile(
     join(workspace.workspaceDir, ".agents", "hooks.json"),
@@ -95,7 +93,7 @@ await test("createAgyRunnerAdapter invokes, installs tool-gate hooks and cancels
   assert.equal(cancelResult.value.confirmedAbsent, true);
 });
 
-await test("createCodexRunnerAdapter discovers capabilities and invokes correctly", async () => {
+await test("createCodexRunnerAdapter discovers and rejects missing enforced transport", async () => {
   const adapter = createCodexRunnerAdapter({
     expectedVersion: "0.159.3",
     model: "codex-1",
@@ -110,9 +108,10 @@ await test("createCodexRunnerAdapter discovers capabilities and invokes correctl
 
   const request = makeFakeRequest();
   const invokeResult = await adapter.invoke(request, controller.signal);
-  assert.equal(invokeResult.ok, true);
-  if (!invokeResult.ok) return;
-  assert.equal(invokeResult.value.execution_status, "SUCCEEDED");
+  assert.equal(invokeResult.ok, false);
+  if (invokeResult.ok) return;
+  assert.equal(invokeResult.error.code, "CAPABILITY_MISSING");
+  assert.match(invokeResult.error.message, /transport is not configured/u);
 
   const cancelResult = await adapter.cancel(request.invocation_id);
   assert.equal(cancelResult.ok, true);

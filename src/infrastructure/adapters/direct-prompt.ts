@@ -30,11 +30,16 @@ const agyResultSchema = z.strictObject({
   }),
 });
 
+const agyErrorSchema = z
+  .object({
+    status: z.literal("ERROR"),
+    error: z.string().min(1).max(2048),
+  })
+  .passthrough();
+
 const codexEventSchema = z.object({
   type: z.string(),
-  item: z
-    .object({ type: z.string(), text: z.string().optional() })
-    .optional(),
+  item: z.object({ type: z.string(), text: z.string().optional() }).optional(),
 });
 
 export function createDirectPromptRunner(
@@ -149,19 +154,27 @@ function parseCompletion(
   runner: "agy" | "codex",
   result: ProcessRunResult,
 ): Outcome<string> {
+  if (runner === "agy") return parseAgyCompletion(result);
   if (result.exitCode !== 0)
-    return failure("CAPABILITY_MISSING", `${runner} direct prompt failed.`);
-  return runner === "agy"
-    ? parseAgyCompletion(result.stdout)
-    : parseCodexCompletion(result.stdout);
+    return failure("CAPABILITY_MISSING", "Codex direct prompt failed.");
+  return parseCodexCompletion(result.stdout);
 }
 
-function parseAgyCompletion(raw: string): Outcome<string> {
+function parseAgyCompletion(result: ProcessRunResult): Outcome<string> {
   try {
-    const parsed = agyResultSchema.safeParse(JSON.parse(raw) as unknown);
-    return parsed.success
-      ? { ok: true, value: parsed.data.response.trim() }
-      : failure("EVIDENCE_INVALID", "Agy returned an invalid response.");
+    const value = JSON.parse(result.stdout) as unknown;
+    const runnerError = agyErrorSchema.safeParse(value);
+    if (runnerError.success)
+      return failure(
+        "CAPABILITY_MISSING",
+        `Agy reported: ${runnerError.data.error}`,
+      );
+    const parsed = agyResultSchema.safeParse(value);
+    if (!parsed.success)
+      return failure("EVIDENCE_INVALID", "Agy returned an invalid response.");
+    if (result.exitCode !== 0)
+      return failure("CAPABILITY_MISSING", "Agy direct prompt failed.");
+    return { ok: true, value: parsed.data.response.trim() };
   } catch {
     return failure("EVIDENCE_INVALID", "Agy returned malformed JSON.");
   }
@@ -178,18 +191,22 @@ function parseCodexCompletion(raw: string): Outcome<string> {
       return failure("EVIDENCE_INVALID", "Codex returned malformed JSONL.");
     }
     const event = codexEventSchema.safeParse(value);
-    if (!event.success) return failure("EVIDENCE_INVALID", "Codex returned an invalid event.");
+    if (!event.success)
+      return failure("EVIDENCE_INVALID", "Codex returned an invalid event.");
     if (event.data.type === "turn.failed" || event.data.type === "error")
       return failure("CAPABILITY_MISSING", "Codex reported a failed turn.");
     if (event.data.type === "turn.completed") completed = true;
-    if (event.data.type === "item.completed" && event.data.item?.type === "agent_message") {
+    if (
+      event.data.type === "item.completed" &&
+      event.data.item?.type === "agent_message"
+    ) {
       const text = event.data.item.text?.trim();
       if (text) messages.push(text);
     }
   }
-  return completed && messages.length === 1
-    ? { ok: true, value: messages[0] ?? "" }
-    : failure("EVIDENCE_INVALID", "Codex completion was missing or ambiguous.");
+  return completed && messages.length > 0
+    ? { ok: true, value: messages.join("\n\n") }
+    : failure("EVIDENCE_INVALID", "Codex completion was missing a response.");
 }
 
 export type { DirectPromptResponse };

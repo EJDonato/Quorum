@@ -10,50 +10,24 @@ import type { ReplIo, ReplState } from "../../src/cli/repl-types.js";
 
 const fixture = resolve("tests/fixtures/config.json");
 
-await test("dispatchReplLine routes freeform prompt to council dispatch", async () => {
+await test("dispatchReplLine sends freeform text to direct read-only runner", async () => {
+  let promptSeen = "";
+  let timeoutSeen = 0;
   const io: ReplIo = {
     readConfig: readConfiguration,
-    sessionRunner: (opts) =>
-      Promise.resolve({
+    directPrompt: (request) => {
+      promptSeen = request.prompt;
+      timeoutSeen = request.timeoutMs;
+      return Promise.resolve({
         ok: true,
         value: {
-          sessionId: opts.sessionId,
-          state: {
-            schema_version: "1.0.0",
-            session_id: opts.sessionId,
-            repository_id: "repo-1",
-            base_commit: { format: "sha1", oid: opts.baseSha },
-            mode: "enforced",
-            state: "COMPLETED",
-            state_sequence: 10,
-            current_candidate_id: "cand-1",
-            input_digest: "sha256:" + "0".repeat(64),
-            limits: {
-              repairs_per_stage: 2,
-              repairs_total: 5,
-              invocation_timeout_ms: 600000,
-              check_timeout_ms: 600000,
-              active_session_ms: 10000,
-              model_tokens: 1000,
-            },
-            budget: {
-              repairs_by_stage: {
-                PLANNING: 0,
-                DESIGN_REVIEW: 0,
-                TEST_SPEC: 0,
-                IMPLEMENTING: 0,
-                VALIDATING: 0,
-                REVIEWING: 0,
-              },
-              repairs_total: 0,
-              tokens_charged: 100,
-              active_elapsed_ms: 500,
-            },
-            blocking_reason: null,
-          },
-          candidateId: "cand-1",
+          runner: "agy",
+          runnerVersion: "1.2.14",
+          model: "gemini-3.8-flash-medium",
+          text: "Quorum coordinates revision-bound coding roles.",
         },
-      }),
+      });
+    },
   };
   const state: ReplState = {
     configPath: fixture,
@@ -63,82 +37,28 @@ await test("dispatchReplLine routes freeform prompt to council dispatch", async 
     exitRequested: false,
   };
 
-  const res = await dispatchReplLine(state, io, "Implement JWT authentication");
-  assert.match(res.text, /Quorum Council Dispatch/);
-  assert.match(res.text, /Prompt: "Implement JWT authentication"/);
-  assert.match(res.text, /Assigned Runner: agy/);
-  assert.match(res.text, /Workflow Pipeline Execution Stages/);
-  assert.match(res.text, /Planner/);
-  assert.match(res.text, /QA Authoring/);
-  assert.match(res.text, /Developer/);
-  assert.match(res.text, /Checks/);
-  assert.match(res.text, /Ballot/);
-  assert.match(res.text, /Session sess/);
+  const res = await dispatchReplLine(state, io, "explain how quorum works");
+  assert.equal(promptSeen, "explain how quorum works");
+  assert.equal(timeoutSeen, 120_000);
+  assert.match(res.text, /agy response/);
+  assert.match(res.text, /Quorum coordinates revision-bound coding roles/);
+  assert.match(res.text, /not Quorum approval evidence/);
+  assert.doesNotMatch(res.text, /Workflow Pipeline Execution Stages/);
 });
 
-await test("dispatchReplLine executes prompt through sessionRunner when supplied", async () => {
-  let executed = false;
+await test("freeform prompt reports direct runner failure without claiming dispatch", async () => {
   const io: ReplIo = {
     readConfig: readConfiguration,
-    sessionRunner: (opts) => {
-      executed = true;
-      return Promise.resolve({
-        ok: true,
-        value: {
-          sessionId: opts.sessionId,
-          state: {
-            schema_version: "1.0.0",
-            session_id: opts.sessionId,
-            repository_id: "repo-1",
-            base_commit: { format: "sha1", oid: opts.baseSha },
-            mode: "enforced",
-            state: "COMPLETED",
-            state_sequence: 10,
-            current_candidate_id: "cand-1",
-            input_digest: "sha256:" + "0".repeat(64),
-            limits: {
-              repairs_per_stage: 2,
-              repairs_total: 5,
-              invocation_timeout_ms: 600000,
-              check_timeout_ms: 600000,
-              active_session_ms: 10000,
-              model_tokens: 1000,
-            },
-            budget: {
-              repairs_by_stage: {
-                PLANNING: 0,
-                DESIGN_REVIEW: 0,
-                TEST_SPEC: 0,
-                IMPLEMENTING: 0,
-                VALIDATING: 0,
-                REVIEWING: 0,
-              },
-              repairs_total: 0,
-              tokens_charged: 100,
-              active_elapsed_ms: 500,
-            },
-            blocking_reason: null,
-          },
-          candidateId: "cand-1",
-          receipt: {
-            schema_version: "1.0.0",
-            transaction_id: "tx-1",
-            session_id: opts.sessionId,
-            candidate_id: "cand-1",
-            commit: {
-              format: "sha1",
-              oid: "1234567890abcdef1234567890abcdef12345678",
-            },
-            tree: {
-              format: "sha1",
-              oid: "1234567890abcdef1234567890abcdef12345678",
-            },
-            parent: { format: "sha1", oid: opts.baseSha },
-            evidence_refs: [],
-          },
+    directPrompt: () =>
+      Promise.resolve({
+        ok: false,
+        error: {
+          code: "CAPABILITY_MISSING",
+          message: "Pinned runner is unavailable.",
+          retryable: false,
+          remediation: "Install the pinned runner.",
         },
-      });
-    },
+      }),
   };
   const state: ReplState = {
     configPath: fixture,
@@ -149,15 +69,9 @@ await test("dispatchReplLine executes prompt through sessionRunner when supplied
   };
 
   const res = await dispatchReplLine(state, io, "explain how quorum works");
-  assert.equal(executed, true);
-  assert.match(res.text, /Quorum Council Dispatch/);
-  assert.match(res.text, /explain how quorum works/);
-  assert.match(res.text, /Session sess/);
-  assert.match(res.text, /completed!/);
-  assert.match(
-    res.text,
-    /Commit OID: 1234567890abcdef1234567890abcdef12345678/,
-  );
+  assert.match(res.text, /Direct codex prompt failed/);
+  assert.match(res.text, /Pinned runner is unavailable/);
+  assert.doesNotMatch(res.text, /Council Dispatch/);
 });
 
 await test("/run slash command validates prompt and executes session runner", async () => {

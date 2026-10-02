@@ -49,20 +49,22 @@ function startFallbackRepl(io: ReplIo, state: ReplState): Promise<void> {
 
   return new Promise<void>((resolve) => {
     let queue = Promise.resolve();
+    let inputClosed = false;
     rl.on("line", (line: string) => {
       queue = queue.then(async () => {
         if (state.exitRequested) return;
         const output = await dispatchReplLine(state, io, line);
         if (output.text) stdout.write(output.text + "\n");
         if (output.shouldExit || state.exitRequested) {
-          rl.close();
-        } else {
+          if (!inputClosed) rl.close();
+        } else if (!inputClosed) {
           rl.prompt();
         }
       });
     });
 
     rl.on("close", () => {
+      inputClosed = true;
       void queue.then(() => resolve());
     });
   });

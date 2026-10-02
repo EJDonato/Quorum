@@ -16,7 +16,8 @@ export function formatBanner(state: ReplState, isColor: boolean): string {
     "",
     `${bold}Quorum Interactive Council v0.1.0${reset}`,
     `${gray}Active Runner:${reset} ${state.activeRunner}  ${gray}|  Config:${reset} ${state.configPath}`,
-    `${gray}Type a prompt to begin or /help for slash commands. (/exit to quit)${reset}`,
+    `${gray}Type a prompt for a read-only runner answer; use /run for a council workflow.${reset}`,
+    `${gray}Type /help for slash commands. (/exit to quit)${reset}`,
     "",
   ].join("\n");
 }
@@ -40,9 +41,9 @@ export function formatHelp(isColor: boolean): string {
     `  ${yellow}/exit, /quit${reset}         Exit the Quorum CLI terminal`,
     "",
     `${bold}Prompt Usage:${reset}`,
-    "  Type any natural language prompt (e.g. 'Add rate limiting to auth routes')",
-    "  to initiate a multi-agent council workflow across Planner, QA, Developer,",
-    "  and Security roles.",
+    "  Type natural language directly for a read-only runner response.",
+    "  Direct responses are not approval evidence and cannot finalize changes.",
+    "  Use /run <task> to start the Planner, QA, Developer, and Security workflow.",
   ].join("\n");
 }
 

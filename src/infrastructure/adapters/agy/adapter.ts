@@ -61,7 +61,7 @@ async function discoverAgy(
 ): Promise<Outcome<RunnerCapabilities>> {
   const executable = options.executable ?? "agy";
   const expectedVersion = options.expectedVersion ?? "1.2.14";
-  const modelVersion = options.model ?? "gemini-2.5-pro";
+  const modelVersion = options.model ?? "gemini-3.8-flash-medium";
 
   const runResult = await runProcess({
     executable,
@@ -159,43 +159,15 @@ async function invokeAgy(
     if (options.customInvoke) {
       return await options.customInvoke(request, controller.signal, workspace);
     }
-    return defaultInvocationResult(request);
+    return failure(
+      "CAPABILITY_MISSING",
+      "Agy enforced invocation transport is not configured.",
+    );
   } finally {
     signal.removeEventListener("abort", onAbort);
     activeInvocations.delete(request.invocation_id);
     if (proxy) await proxy.close().catch(() => undefined);
   }
-}
-
-function defaultInvocationResult(
-  request: InvocationRequest,
-): Outcome<InvocationResult> {
-  const now = new Date().toISOString();
-  return {
-    ok: true,
-    value: {
-      protocol_version: "1.0.0",
-      invocation_id: request.invocation_id,
-      session_id: request.session_id,
-      input_digest: request.input_digest,
-      execution_status: "SUCCEEDED",
-      usage: {
-        input_tokens: 100,
-        output_tokens: 50,
-        cached_input_tokens: 0,
-        reasoning_tokens: 0,
-        charged_tokens: 150,
-        accounting_complete: true,
-      },
-      output_ref: {
-        artifact_id: `output-${request.assignment.role}`,
-        digest: request.input_digest,
-      },
-      error: null,
-      started_at: now,
-      ended_at: now,
-    },
-  };
 }
 
 async function cancelAgy(

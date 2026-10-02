@@ -1,4 +1,5 @@
 import type { ConfigurationPort } from "../application/inspect-config.js";
+import type { DirectPromptPort } from "../application/direct-prompt.js";
 import type { RunnerAdapter } from "../application/runner-ports.js";
 import type {
   OrchestratorOptions,
@@ -22,6 +23,7 @@ export interface ReplIo {
   stdin?: NodeJS.ReadableStream;
   stdout?: NodeJS.WritableStream;
   runnerAdapterFactory?: (runner: RunnerName) => RunnerAdapter;
+  directPrompt?: DirectPromptPort;
   sessionRunner?: (
     options: OrchestratorOptions,
   ) => Promise<Outcome<SessionRunResult>>;

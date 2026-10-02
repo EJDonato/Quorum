@@ -127,7 +127,10 @@ export function createCheckRecord(opts: {
   const input =
     opts.phase === "final"
       ? { phase: "final" as const, candidate_id: opts.candidateId ?? "cand" }
-      : { phase: opts.phase, input_digest: opts.inputDigest ?? opts.commandDigest };
+      : {
+          phase: opts.phase,
+          input_digest: opts.inputDigest ?? opts.commandDigest,
+        };
   return {
     schema_version: "1.0.0",
     check_result_id: `chk-${opts.phase}-${opts.sessionId.slice(0, 8)}`,
@@ -219,7 +222,11 @@ function createReviewRequest(opts: {
     session_id: opts.sessionId,
     invocation_id: `inv-${opts.role}-${opts.sessionId.slice(0, 8)}`,
     task_id: null,
-    assignment: { phase: "final", role: opts.role, candidate_id: opts.candidateId },
+    assignment: {
+      phase: "final",
+      role: opts.role,
+      candidate_id: opts.candidateId,
+    },
     input_digest: opts.inputDigest,
     input_refs: [{ artifact_id: "candidate", digest: opts.candidateId }],
     grants: {

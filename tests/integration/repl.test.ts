@@ -115,8 +115,6 @@ await test("dispatchReplLine handles /help, /status, /diff, /clear, and /exit", 
   assert.equal(state.exitRequested, true);
 });
 
-
-
 await test("startRepl processes stream of commands and exits cleanly", async () => {
   const stdin = new PassThrough();
   const stdout = new PassThrough();
@@ -150,6 +148,46 @@ await test("startRepl processes stream of commands and exits cleanly", async () 
   assert.match(capturedStdout, /Exiting Quorum CLI/);
   assert.equal(state.activeRunner, "codex");
   assert.equal(state.exitRequested, true);
+});
+
+await test("startRepl drains an asynchronous prompt after piped input closes", async () => {
+  const stdin = new PassThrough();
+  const stdout = new PassThrough();
+  let capturedStdout = "";
+  stdout.on("data", (chunk: Buffer) => {
+    capturedStdout += chunk.toString("utf8");
+  });
+  const io: ReplIo = {
+    readConfig: readConfiguration,
+    directPrompt: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return {
+        ok: true,
+        value: {
+          runner: "agy",
+          runnerVersion: "1.2.14",
+          model: "gemini-3.8-flash-medium",
+          text: "A delayed answer.",
+        },
+      };
+    },
+    stdin,
+    stdout,
+  };
+  const state: ReplState = {
+    configPath: fixture,
+    activeRunner: "agy",
+    rootDir: process.cwd(),
+    activeSessionId: null,
+    exitRequested: false,
+  };
+
+  const replPromise = startRepl(io, state);
+  stdin.end("explain quorum\n");
+  await replPromise;
+
+  assert.match(capturedStdout, /A delayed answer/);
+  assert.match(capturedStdout, /not Quorum approval evidence/);
 });
 
 await test("/run slash command validates prompt and executes session runner", async () => {

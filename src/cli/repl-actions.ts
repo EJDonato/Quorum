@@ -5,11 +5,13 @@ import {
   capabilityDiagnostics,
   inspectConfiguration,
 } from "../application/inspect-config.js";
-import { formatHelp, sanitizeText } from "./repl-banner.js";
+import { formatHelp } from "./repl-banner.js";
+import { handlePromptSubmission } from "./repl-prompt.js";
 import { handleRunCommand } from "./repl-run.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
 export { handleRunCommand } from "./repl-run.js";
+export { handlePromptSubmission } from "./repl-prompt.js";
 
 export function handleRunnerCommand(
   state: ReplState,
@@ -146,41 +148,6 @@ export async function handleDiffCommand(
   } catch {
     return { text: "No active candidate diff found in this repository." };
   }
-}
-
-export async function handlePromptSubmission(
-  state: ReplState,
-  io: ReplIo,
-  prompt: string,
-): Promise<ReplActionOutput> {
-  const cleanPrompt = sanitizeText(prompt.trim());
-  const config = await inspectConfiguration(state.configPath, {
-    read: io.readConfig,
-  });
-  const configStatus = config.ok
-    ? `valid (${config.value.mode} mode)`
-    : `unverified (${config.error.message})`;
-
-  const dispatchStages = [
-    "Quorum Council Dispatch:",
-    `  Prompt: "${cleanPrompt}"`,
-    `  Assigned Runner: ${state.activeRunner}`,
-    `  Configuration: ${configStatus}`,
-    "",
-    "Workflow Pipeline Execution Stages:",
-    "  1. [Preflight] Validate Git base SHA and isolate workspace",
-    `  2. [Planner] Decompose prompt into task graph via ${state.activeRunner}`,
-    "  3. [QA Authoring] Author tests & verify expected red failure",
-    `  4. [Developer] Implement changes using ${state.activeRunner} in container`,
-    "  5. [Checks] Execute lint, typecheck, unit, and fuzz suites",
-    "  6. [Ballot] Collect independent QA & Security revision-bound approvals",
-    "  7. [Finalization] Construct atomic verified git commit",
-  ].join("\n");
-
-  const runResult = await handleRunCommand(state, io, cleanPrompt);
-  return {
-    text: `${dispatchStages}\n\n${runResult.text}`,
-  };
 }
 
 export async function dispatchReplLine(

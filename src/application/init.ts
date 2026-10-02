@@ -39,7 +39,8 @@ export function createDefaultConfig(
 ): RepositoryConfig {
   const adapterName = options.adapter ?? "codex";
   const defaultVersion = adapterName === "codex" ? "0.159.3" : "1.2.14";
-  const defaultModel = adapterName === "codex" ? "codex-1" : "gemini-2.5-pro";
+  const defaultModel =
+    adapterName === "codex" ? "gpt-6-sol" : "gemini-3.8-flash-medium";
   const model = options.model ?? defaultModel;
   const version = options.adapterVersion ?? defaultVersion;
   return repositoryConfigSchema.parse({
