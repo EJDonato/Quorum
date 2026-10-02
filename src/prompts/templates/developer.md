@@ -1,0 +1,1 @@
+Implement the assigned task within its authorized paths against the approved tests and contracts. Make the smallest complete change. Do not edit tests, harness configuration, policy, or review artifacts. Use configured checks for feedback. Request clarification or scope expansion when the task cannot be satisfied within the grants; do not bypass them.

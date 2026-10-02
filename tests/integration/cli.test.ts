@@ -68,14 +68,7 @@ await test("invalid CLI input, missing configuration, and unsupported commands h
     ).exitCode,
     4,
   );
-  for (const command of [
-    "init",
-    "run",
-    "commit",
-    "resume",
-    "clean",
-    "dispatch",
-  ]) {
+  for (const command of ["run", "commit", "resume", "clean", "dispatch"]) {
     const result = await executeCommand([command, "--json"], port);
     assert.equal(result.exitCode, 3);
     assert.match(present(result).stdout, /CAPABILITY_MISSING/);

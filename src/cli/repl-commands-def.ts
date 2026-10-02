@@ -19,6 +19,12 @@ export const SLASH_COMMAND_DEFINITIONS: readonly SlashCommandDefinition[] = [
     needsArg: true,
   },
   {
+    name: "/init",
+    syntax: "/init",
+    description: "Initialize .quorum/ configuration and persona templates",
+    needsArg: false,
+  },
+  {
     name: "/runner",
     syntax: "/runner [agy|codex]",
     description: "Show or switch active runner",

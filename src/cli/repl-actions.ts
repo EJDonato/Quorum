@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { initRepository } from "../application/init.js";
 import {
   capabilityDiagnostics,
   inspectConfiguration,
@@ -97,6 +98,28 @@ export async function handleStatusCommand(
   }
 }
 
+export async function handleInitCommand(
+  state: ReplState,
+): Promise<ReplActionOutput> {
+  const result = await initRepository({ rootDir: state.rootDir });
+  if (!result.ok) {
+    return { text: `Initialization failed: ${result.error.message}` };
+  }
+  const val = result.value;
+  const configMsg = val.configCreated
+    ? `Created configuration: ${val.configPath}`
+    : `Preserved existing configuration: ${val.configPath}`;
+  return {
+    text: [
+      "Quorum repository initialized successfully:",
+      `  ${configMsg}`,
+      `  Persona templates: ${val.createdPersonas.length} created, ${val.preservedPersonas.length} preserved in ${val.agentsDir}`,
+      "",
+      val.disclosure,
+    ].join("\n"),
+  };
+}
+
 export async function handleDiffCommand(
   state: ReplState,
 ): Promise<ReplActionOutput> {
@@ -169,6 +192,9 @@ export async function dispatchReplLine(
   }
   if (trimmed === "/run" || trimmed.startsWith("/run ")) {
     return handleRunCommand(state, io, trimmed.slice(4).trim());
+  }
+  if (trimmed === "/init") {
+    return handleInitCommand(state);
   }
   if (trimmed === "/doctor") {
     return handleDoctorCommand(state, io);

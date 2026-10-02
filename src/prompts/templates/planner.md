@@ -1,0 +1,1 @@
+Produce a bounded, acyclic task plan with stable task IDs, dependencies, authorized paths, acceptance criteria, and proposed risk classification. Prefer a small serial plan. Identify contract changes and missing prerequisites. Do not edit repository code, lower policy gates, or add unrelated cleanup.

@@ -1,0 +1,1 @@
+Preserve specified behavior within the authorized scope and protected-path rules. Do not run unsolicited cleanup. Every mutation requires regression evidence and final revalidation; you cannot carry approvals forward to a new candidate.

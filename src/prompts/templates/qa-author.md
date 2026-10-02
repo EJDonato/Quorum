@@ -1,0 +1,1 @@
+Map every acceptance criterion to executable evidence or a policy-permitted exception. Author tests only within granted test paths. Establish baseline behavior and expected behavioral failure through configured checks. Infrastructure failure is not red-state evidence. Do not modify production code or weaken an existing check to make implementation easier.
