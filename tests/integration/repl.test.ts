@@ -171,3 +171,80 @@ await test("startRepl processes stream of commands and exits cleanly", async () 
   assert.equal(state.activeRunner, "codex");
   assert.equal(state.exitRequested, true);
 });
+
+await test("/run slash command validates prompt and executes session runner", async () => {
+  let sessionExecuted = false;
+  const io: ReplIo = {
+    readConfig: readConfiguration,
+    sessionRunner: (opts) => {
+      sessionExecuted = true;
+      return Promise.resolve({
+        ok: true,
+        value: {
+          sessionId: opts.sessionId,
+          state: {
+            schema_version: "1.0.0",
+            session_id: opts.sessionId,
+            repository_id: "repo-1",
+            base_commit: { format: "sha1", oid: opts.baseSha },
+            mode: "enforced",
+            state: "COMPLETED",
+            state_sequence: 10,
+            current_candidate_id: "cand-1",
+            input_digest: "sha256:" + "0".repeat(64),
+            limits: {
+              model_tokens: 1000,
+              active_session_ms: 10000,
+              max_repairs_per_stage: 2,
+              max_repairs_total: 5,
+            },
+            budget: {
+              repairs_by_stage: {
+                PLANNING: 0,
+                DESIGN_REVIEW: 0,
+                TEST_SPEC: 0,
+                IMPLEMENTING: 0,
+                VALIDATING: 0,
+                REVIEWING: 0,
+              },
+              repairs_total: 0,
+              tokens_charged: 100,
+              active_elapsed_ms: 500,
+            },
+            blocking_reason: null,
+          },
+          candidateId: "cand-1",
+          receipt: {
+            schema_version: "1.0.0",
+            session_id: opts.sessionId,
+            commit_oid: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            candidate_id: "cand-1",
+            tree_oid: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            parent_oid: opts.baseSha,
+            ballot_digest: "sha256:" + "1".repeat(64),
+            committed_at: new Date().toISOString(),
+          },
+        },
+      });
+    },
+  };
+
+  const state: ReplState = {
+    configPath: fixture,
+    activeRunner: "agy",
+    rootDir: process.cwd(),
+    activeSessionId: null,
+    exitRequested: false,
+  };
+
+  const missingPrompt = await dispatchReplLine(state, io, "/run");
+  assert.match(missingPrompt.text, /Missing prompt for \/run/);
+
+  const ran = await dispatchReplLine(state, io, "/run Add test helper");
+  assert.match(ran.text, /completed!/);
+  assert.match(ran.text, /State: COMPLETED/);
+  assert.match(ran.text, /Commit OID: 4b825dc642cb6eb9a060e54bf8d69288fbee4904/);
+  assert.equal(sessionExecuted, true);
+  assert.ok(state.activeSessionId);
+});
+

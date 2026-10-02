@@ -5,7 +5,10 @@ import {
   inspectConfiguration,
 } from "../application/inspect-config.js";
 import { formatHelp, sanitizeText } from "./repl-banner.js";
+import { handleRunCommand } from "./repl-run.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
+
+export { handleRunCommand } from "./repl-run.js";
 
 export function handleRunnerCommand(
   state: ReplState,
@@ -137,7 +140,7 @@ export async function handlePromptSubmission(
       "  6. [Ballot] Collect independent QA & Security revision-bound approvals",
       "  7. [Finalization] Construct atomic verified git commit",
       "",
-      "Ready to execute. Use /doctor to verify environment readiness.",
+      "Ready to execute. Use /doctor to verify environment readiness, or /run <prompt> to execute.",
     ].join("\n"),
   };
 }
@@ -159,6 +162,9 @@ export async function dispatchReplLine(
   }
   if (trimmed === "/help") {
     return { text: formatHelp(Boolean(process.stdout?.isTTY)) };
+  }
+  if (trimmed.startsWith("/run")) {
+    return handleRunCommand(state, io, trimmed.slice(4).trim());
   }
   if (trimmed.startsWith("/runner")) {
     const parts = trimmed.split(/\s+/);

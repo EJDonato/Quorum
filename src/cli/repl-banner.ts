@@ -29,6 +29,7 @@ export function formatHelp(isColor: boolean): string {
   return [
     `${bold}Available Slash Commands:${reset}`,
     `  ${yellow}/help${reset}                Show this command reference`,
+    `  ${yellow}/run <prompt>${reset}        Execute council workflow session with active runner`,
     `  ${yellow}/runner [agy|codex]${reset}  Show or switch active runner`,
     `  ${yellow}/doctor${reset}              Check runtime capabilities and verifications`,
     `  ${yellow}/config [file]${reset}       Inspect and validate configuration file`,

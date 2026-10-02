@@ -5,6 +5,7 @@ import type { ReplIo, ReplState, RunnerName } from "./repl-types.js";
 
 const SLASH_COMMANDS = [
   "/help",
+  "/run",
   "/runner",
   "/doctor",
   "/config",
