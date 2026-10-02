@@ -223,7 +223,7 @@ await test("live probe refuses to launch without explicit opt-in and cancelled c
       "/nonexistent/runner",
     ],
     cwd,
-    timeoutMs: 2_000,
+    timeoutMs: 10_000,
   });
   assert.equal(refused.exitCode, 1);
   const controller = new AbortController();

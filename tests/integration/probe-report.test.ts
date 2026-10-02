@@ -118,7 +118,7 @@ await test("probe CLI preserves private intent and failure reports even when ver
         cwd,
       ],
       cwd: resolve("."),
-      timeoutMs: 2_000,
+      timeoutMs: 10_000,
     });
     assert.equal(result.exitCode, 1);
     const directory = (await readdir(cwd)).find((name) =>

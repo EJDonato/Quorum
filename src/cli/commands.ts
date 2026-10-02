@@ -60,7 +60,7 @@ function parse(argv: string[]) {
 
 function help(json: boolean): CommandResult {
   const text =
-    "Quorum foundation\nUsage: quorum config|doctor [--config FILE] [--json]\nconfig validates configuration; doctor reports unverified capabilities.\nSession execution and init are not implemented.";
+    "Quorum foundation\nUsage: quorum [config|doctor|repl] [--config FILE] [--json]\nRunning quorum without arguments launches the interactive terminal.\nconfig validates configuration; doctor reports unverified capabilities.";
   return {
     exitCode: 0,
     json,
