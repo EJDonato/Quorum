@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "runner_control_metadata",
+  "runner": "agy",
+  "expected_version": "1.2.14",
+  "observed_version": "1.2.14",
+  "executable_digest": "sha256:a33fdf084ecd199df00694f35a243200a3efacb1f4f3adf04ca19d76f7f714c4",
+  "binary_unchanged": true,
+  "steps": [
+    {
+      "id": "version",
+      "attempted": true,
+      "exit_code": 0,
+      "failure": null
+    },
+    {
+      "id": "help",
+      "attempted": true,
+      "exit_code": 0,
+      "failure": null
+    }
+  ],
+  "known_features": {
+    "shell_tool": null,
+    "unified_exec": null,
+    "token_budget": null,
+    "rollout_budget": null
+  },
+  "protocol_fields": {
+    "dynamic_tools": false,
+    "output_schema": false
+  },
+  "capability_observations": {
+    "schema_bound_output": "UNVERIFIED",
+    "broker_only_effects": "UNVERIFIED",
+    "credential_network_separation": "UNVERIFIED",
+    "container_boundary": "UNVERIFIED",
+    "hard_token_ceiling": "UNVERIFIED",
+    "complete_usage": "UNVERIFIED",
+    "descendant_cancellation": "UNVERIFIED"
+  },
+  "enforced_conformance": false
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "runner_control_metadata",
+  "runner": "codex",
+  "expected_version": "0.159.3",
+  "observed_version": "0.159.3",
+  "executable_digest": "sha256:4d210f7c5a18fd0386434df23b5bdbb8c0e7257d3e8a2b30b0769c8bbe99a878",
+  "binary_unchanged": true,
+  "steps": [
+    {
+      "id": "version",
+      "attempted": true,
+      "exit_code": 0,
+      "failure": null
+    },
+    {
+      "id": "help",
+      "attempted": true,
+      "exit_code": 0,
+      "failure": null
+    },
+    {
+      "id": "features",
+      "attempted": true,
+      "exit_code": 0,
+      "failure": null
+    },
+    {
+      "id": "protocol_schema",
+      "attempted": true,
+      "exit_code": 0,
+      "failure": null
+    }
+  ],
+  "known_features": {
+    "shell_tool": false,
+    "unified_exec": true,
+    "token_budget": false,
+    "rollout_budget": false
+  },
+  "protocol_fields": {
+    "dynamic_tools": true,
+    "output_schema": true
+  },
+  "capability_observations": {
+    "schema_bound_output": "UNVERIFIED",
+    "broker_only_effects": "UNVERIFIED",
+    "credential_network_separation": "UNVERIFIED",
+    "container_boundary": "UNVERIFIED",
+    "hard_token_ceiling": "UNVERIFIED",
+    "complete_usage": "UNVERIFIED",
+    "descendant_cancellation": "UNVERIFIED"
+  },
+  "enforced_conformance": false
+}

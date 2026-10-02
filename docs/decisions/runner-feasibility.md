@@ -21,16 +21,7 @@ Reproducible probe plan, independently for each target:
 6. Cancel a fixture that launches a stubborn descendant; confirm all descendants terminate. Unconfirmed cleanup blocks resume and cleanup.
 7. Repeat successful probes against pinned versions and preserve machine-readable evidence before creating production adapters.
 
-| Capability                             | Antigravity (`agy`)                                                                           | Codex                                                                                   |
-| :------------------------------------- | :-------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
-| Exact integration/version/model        | CLI 1.2.14 observed; current configured/catalog model identified; backend revision unverified | CLI 0.159.3 observed; requested `gpt-6-sol`; backend revision unverified                |
-| Schema-bound output                    | One schema-constrained smoke passed; adversarial enforcement unverified                       | One schema-constrained smoke passed; adversarial enforcement unverified                 |
-| Broker-only effects                    | Unverified                                                                                    | Unverified; shell-disable registry result inconclusive                                  |
-| Credential and network separation      | Unverified                                                                                    | Unverified                                                                              |
-| Container boundary                     | Synthetic host Docker boundary passed; runner inside container unverified                     | Synthetic host Docker boundary passed; runner inside container unverified               |
-| Hard token ceilings and complete usage | Usage reporting verified; host pre-dispatch reservation & reconciliation designed             | Usage reporting verified; host pre-dispatch reservation & reconciliation designed       |
-| Descendant cancellation/recovery       | Process-group termination verified; detached escape proves container cgroup requirement       | Process-group termination verified; detached escape proves container cgroup requirement |
-| Proceed decision                       | **BLOCKED** (pending container & broker-only boundary integration)                            | **BLOCKED** (pending container & broker-only boundary integration)                      |
+The current [capability matrix and reproductions](../implementation/enforced-runner-capabilities.md) supersede the earlier matrix. Both pinned runners remain **BLOCKED**: broker-only effects, runner credential isolation, hard request ceilings, complete lifecycle accounting and container-contained descendant cancellation are unverified. Historical terminal usage and process-group cleanup do not clear those gates.
 
 The pure engine can progress independently. No permissive fallback or advisory result can satisfy these release gates.
 
@@ -68,4 +59,4 @@ On 2026-10-01, one live attempt was authorized to verify the corrected parser ag
 
 Repeatable descendant process cancellation probes were implemented and verified in [`docs/implementation/cancellation-probes.md`](../implementation/cancellation-probes.md) and [`evidence/2026-10-01/descendant-cancellation-report.json`](../implementation/evidence/2026-10-01/descendant-cancellation-report.json). Host process-group termination (`process.kill(-pgid, 'SIGKILL')`) reliably terminates standard in-group child processes, but detached processes (`setsid`) escape process-group signaling. This establishes empirically why container cgroups are mandatory for untrusted execution.
 
-Neither provider CLI exposes a pre-request provider refusal ceiling. The architectural design in [`docs/decisions/token-ceiling-enforcement.md`](token-ceiling-enforcement.md) establishes host-enforced pre-dispatch budget reservations and post-invocation usage reconciliation, halting the session immediately upon overrun. M0 remains blocked pending the container boundary and broker-only integrations planned for M3 and M5.
+Neither provider CLI exposes a pre-request provider refusal ceiling. The proposal in [token-ceiling-enforcement.md](token-ceiling-enforcement.md) describes host reservations and post-invocation reconciliation. It is not accepted as a hard request ceiling and is not wired to production dispatch. M0 remains blocked on hard ceilings, complete accounting, credential separation, broker-only tools and runner containment.
