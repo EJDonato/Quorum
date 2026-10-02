@@ -39,6 +39,7 @@ export function createRunnerOrchestrationHooks(
         writePaths: ["src/**"],
         workspace,
       }),
+    onValidate: () => Promise.resolve({ ok: true as const, value: undefined }),
     onReview: (workspace, candidateId) =>
       dispatchRole({
         options,

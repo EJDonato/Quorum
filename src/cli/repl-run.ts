@@ -4,6 +4,8 @@ import { runSession } from "../application/orchestrator.js";
 import { createRunnerOrchestrationHooks } from "../application/runner-dispatch.js";
 import { createRunnerAdapter } from "../infrastructure/adapters/factory.js";
 import { readSourceRepositoryInfo } from "../infrastructure/git/operations.js";
+import { createWorkflowVerification } from "../application/workflow-verification.js";
+import type { WorkflowVerification } from "../application/session-init.js";
 import { sanitizeText } from "./repl-banner.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
@@ -29,13 +31,11 @@ export async function handleRunCommand(
     return { text: `Repository error: ${repo.error.message}` };
   }
 
-  const sessionId = "sess" + randomUUID().replace(/-/g, "").slice(0, 24);
-  state.activeSessionId = sessionId;
+  const { sessionId, inputDigest } = prepareRunInput(state, cleanPrompt);
   const adapter =
     io.runnerAdapterFactory?.(state.activeRunner) ??
     createRunnerAdapter(state.activeRunner);
 
-  const inputDigest = `sha256:${createHash("sha256").update(cleanPrompt).digest("hex")}`;
   const hooks = createRunnerOrchestrationHooks({
     adapter,
     sessionId,
@@ -45,18 +45,56 @@ export async function handleRunCommand(
     tokensReserved: config.value.budgets.model_tokens,
   });
 
-  const runner = io.sessionRunner ?? runSession;
-  const result = await runner({
-    rootDir: state.rootDir,
-    sourceDir: state.rootDir,
+  const verification =
+    io.verificationFactory?.(sessionId, inputDigest) ??
+    createWorkflowVerification({
+      rootDir: state.rootDir,
+      config: config.value,
+      sessionId,
+      inputDigest,
+    });
+
+  const result = await executeRunSession(io, {
+    state,
     sessionId,
     baseSha: repo.value.headSha,
     objectFormat: repo.value.objectFormat,
     hooks,
-    commit: true,
+    verification,
   });
 
   return formatRunResult(sessionId, result);
+}
+
+async function executeRunSession(
+  io: ReplIo,
+  opts: {
+    state: ReplState;
+    baseSha: string;
+    objectFormat: "sha1" | "sha256";
+    sessionId: string;
+    hooks: Parameters<typeof runSession>[0]["hooks"];
+    verification: WorkflowVerification;
+  },
+) {
+  const runner = io.sessionRunner ?? runSession;
+  return runner({
+    rootDir: opts.state.rootDir,
+    sourceDir: opts.state.rootDir,
+    sessionId: opts.sessionId,
+    baseSha: opts.baseSha,
+    objectFormat: opts.objectFormat,
+    hooks: opts.hooks,
+    verification: opts.verification,
+    commit: true,
+  });
+}
+
+function prepareRunInput(state: ReplState, cleanPrompt: string) {
+  const sessionId = "sess" + randomUUID().replace(/-/g, "").slice(0, 24);
+  const inputDigest = `sha256:${createHash("sha256").update(cleanPrompt).digest("hex")}`;
+  state.activeSessionId = sessionId;
+  return { sessionId, inputDigest };
 }
 
 function formatRunResult(

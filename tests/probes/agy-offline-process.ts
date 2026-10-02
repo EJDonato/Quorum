@@ -69,11 +69,14 @@ export function runAgyOfflineProtocol(
           child.kill("SIGKILL");
         }
       } catch (error) {
-        if (!(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "ESRCH"
-        )) {
+        if (
+          failure !== null &&
+          !(
+            error instanceof Error &&
+            "code" in error &&
+            (error.code === "ESRCH" || error.code === "EPERM")
+          )
+        ) {
           failure = "LAUNCH_FAILED";
         }
       }

@@ -3,6 +3,7 @@ import type { RunnerAdapter } from "../application/runner-ports.js";
 import type {
   OrchestratorOptions,
   SessionRunResult,
+  WorkflowVerification,
 } from "../application/session-init.js";
 import type { Outcome } from "../contracts/errors.js";
 
@@ -24,6 +25,10 @@ export interface ReplIo {
   sessionRunner?: (
     options: OrchestratorOptions,
   ) => Promise<Outcome<SessionRunResult>>;
+  verificationFactory?: (
+    sessionId: string,
+    inputDigest: string,
+  ) => WorkflowVerification;
 }
 
 export interface ReplActionOutput {

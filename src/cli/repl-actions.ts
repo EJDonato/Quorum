@@ -161,24 +161,25 @@ export async function handlePromptSubmission(
     ? `valid (${config.value.mode} mode)`
     : `unverified (${config.error.message})`;
 
+  const dispatchStages = [
+    "Quorum Council Dispatch:",
+    `  Prompt: "${cleanPrompt}"`,
+    `  Assigned Runner: ${state.activeRunner}`,
+    `  Configuration: ${configStatus}`,
+    "",
+    "Workflow Pipeline Execution Stages:",
+    "  1. [Preflight] Validate Git base SHA and isolate workspace",
+    `  2. [Planner] Decompose prompt into task graph via ${state.activeRunner}`,
+    "  3. [QA Authoring] Author tests & verify expected red failure",
+    `  4. [Developer] Implement changes using ${state.activeRunner} in container`,
+    "  5. [Checks] Execute lint, typecheck, unit, and fuzz suites",
+    "  6. [Ballot] Collect independent QA & Security revision-bound approvals",
+    "  7. [Finalization] Construct atomic verified git commit",
+  ].join("\n");
+
+  const runResult = await handleRunCommand(state, io, cleanPrompt);
   return {
-    text: [
-      "Quorum Council Dispatch:",
-      `  Prompt: "${cleanPrompt}"`,
-      `  Assigned Runner: ${state.activeRunner}`,
-      `  Configuration: ${configStatus}`,
-      "",
-      "Workflow Pipeline Execution Stages:",
-      "  1. [Preflight] Validate Git base SHA and isolate workspace",
-      `  2. [Planner] Decompose prompt into task graph via ${state.activeRunner}`,
-      "  3. [QA Authoring] Author tests & verify expected red failure",
-      `  4. [Developer] Implement changes using ${state.activeRunner} in container`,
-      "  5. [Checks] Execute lint, typecheck, unit, and fuzz suites",
-      "  6. [Ballot] Collect independent QA & Security revision-bound approvals",
-      "  7. [Finalization] Construct atomic verified git commit",
-      "",
-      "Ready to execute. Use /doctor to verify environment readiness, or /run <prompt> to execute.",
-    ].join("\n"),
+    text: `${dispatchStages}\n\n${runResult.text}`,
   };
 }
 
