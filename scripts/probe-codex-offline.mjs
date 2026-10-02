@@ -124,7 +124,8 @@ async function main() {
     const config =
       `model = "quorum-fixture-model"\nmodel_provider = "quorum_fixture"\n` +
       `web_search = "disabled"\n[features]\nshell_tool = false\nunified_exec = false\n` +
-      `multi_agent = false\ngoals = false\nhooks = false\nplugins = false\n` +
+      `multi_agent = false\ngoals = false\nhooks = false\nplugins = false\nview_image = false\n` +
+      `[tools.experimental_request_user_input]\nenabled = false\n` +
       `[model_providers.quorum_fixture]\nname = "Offline fixture"\n` +
       `base_url = "http://127.0.0.1:${provider?.port ?? 9}/v1"\nwire_api = "responses"\n` +
       `requires_openai_auth = false\nrequest_max_retries = 0\nstream_max_retries = 0\nsupports_websockets = false\n`;
