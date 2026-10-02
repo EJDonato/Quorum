@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "container_cancellation_probe",
+  "image_id": "sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+  "docker_version": "29.6.2",
+  "container_id": "quorum-cancel-af215a7625554f63854a583e926ab1a6",
+  "launched": true,
+  "stubborn_tree_started": true,
+  "cancelled": true,
+  "cleanup_confirmed": true,
+  "cgroup_containment_effective": true,
+  "failure": null
+}

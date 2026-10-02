@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "container_cancellation_probe",
+  "image_id": "sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+  "descendant_cancellation_expected": true
+}
