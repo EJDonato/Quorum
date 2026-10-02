@@ -38,7 +38,26 @@ import {
   testPreparationPolicySchema,
 } from "../dist/src/contracts/test-specification.js";
 
+import {
+  modelInputSchema,
+  modelPayloadSchema,
+  modelCapabilitySchema,
+  modelCountSchema,
+  gatewayAllocationSchema,
+  modelReservationSchema,
+  gatewayEventSchema,
+  modelCompletionSchema,
+} from "../dist/src/contracts/model-gateway.js";
+
 const schemas = {
+  ModelInput: modelInputSchema,
+  ModelPayload: modelPayloadSchema,
+  ModelCapability: modelCapabilitySchema,
+  ModelCount: modelCountSchema,
+  GatewayAllocation: gatewayAllocationSchema,
+  ModelReservation: modelReservationSchema,
+  GatewayEvent: gatewayEventSchema,
+  ModelCompletion: modelCompletionSchema,
   TestSpecification: testSpecificationSchema,
   PreparationSnapshot: preparationSnapshotSchema,
   TestPreparationReceipt: testPreparationReceiptSchema,

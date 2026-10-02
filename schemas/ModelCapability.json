@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "fixture",
+        "unverified",
+        "verified"
+      ]
+    },
+    "input_bound": {
+      "type": "string",
+      "enum": [
+        "exact_payload",
+        "unsupported"
+      ]
+    },
+    "output_bound": {
+      "type": "string",
+      "enum": [
+        "includes_reasoning",
+        "unsupported"
+      ]
+    },
+    "hidden_retries": {
+      "type": "boolean",
+      "const": false
+    },
+    "evidence_digest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "provider",
+    "model",
+    "status",
+    "input_bound",
+    "output_bound",
+    "hidden_retries",
+    "evidence_digest"
+  ],
+  "additionalProperties": false
+}

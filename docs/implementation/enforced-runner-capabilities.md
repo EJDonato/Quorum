@@ -4,6 +4,8 @@ Date: 2026-10-02. **Both runners remain BLOCKED for enforced operation.** This i
 
 Implementation follow-up: the [offline Codex protocol and local fake-provider probe](codex-offline-protocol.md) is now implemented and exercised. It proves credential-free initialization and local endpoint substitution for Codex 0.159.3, exposes a remaining built-in tool and the absence of an output-token bound in the captured request, and adds deterministic regression coverage. These observations do not clear M0. The metadata-only work described below remains a historical investigation; the follow-up records its additional processes and failures separately.
 
+The subsequent [host model gateway slice](model-gateway.md) implements frozen text-payload counting, durable pre-generation reservation, host-only credentials and conservative exactly-once settlement. Its shipped real-provider transport remains unverified and blocked; fixtures cannot establish account/model compatibility, CLI request translation, full broker tools or runner containment. The mandatory matrix below is not upgraded by these code tests.
+
 Requirements: PRD Sections 3.1, 4.2, 7 and acceptance criteria 6, 10, 12; SYSTEM_DESIGN Sections 2 and 5.2; implementation milestone M0. For the original metadata investigation, no runtime adapter, product requirement, or TypeScript architecture was changed, and no model request, credential inspection, package installation, image pull, or new real-container experiment was performed. The subsequent offline implementation sent only local fake-provider requests, as recorded separately above.
 
 ## Capability matrix
