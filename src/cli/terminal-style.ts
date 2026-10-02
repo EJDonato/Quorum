@@ -21,8 +21,11 @@ interface RunnerResponseOptions {
 }
 
 export function supportsTerminalStyle(output: NodeJS.WritableStream): boolean {
-  const isTTY = Boolean((output as { isTTY?: boolean }).isTTY);
-  return isTTY && process.env.NO_COLOR === undefined;
+  return isInteractiveTerminal(output) && process.env.NO_COLOR === undefined;
+}
+
+export function isInteractiveTerminal(output: NodeJS.WritableStream): boolean {
+  return Boolean((output as { isTTY?: boolean }).isTTY);
 }
 
 export function formatRunnerResponse(options: RunnerResponseOptions): string {
@@ -68,6 +71,13 @@ function formatMarkupLine(line: string): string {
     protect(`${ansi.bold}${ansi.magenta}${String(title)}${ansi.reset}`),
   );
   output = output.replace(
+    /\[([^\]\n]+)\]\(((?:\.?\.?\/|\/)[^)\n]+\.(?:c|css|go|html|java|js|json|jsx|md|mjs|py|rs|sh|ts|tsx|txt|yaml|yml)(?::\d+)?)\)/gu,
+    (_match, label, path) =>
+      protect(
+        `${ansi.green}${ansi.underline}${String(label)}${ansi.reset} ${ansi.dim}${ansi.green}(${String(path)})${ansi.reset}`,
+      ),
+  );
+  output = output.replace(
     /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/gu,
     (_match, label, url) =>
       protect(
@@ -99,12 +109,39 @@ function formatMarkupLine(line: string): string {
 }
 
 function filePathPattern(): RegExp {
-  return /(?<![\w:/])(?:\.?\.?\/|\/)?(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:c|css|go|html|java|js|json|jsx|md|mjs|py|rs|sh|ts|tsx|txt|yaml|yml)(?::\d+)?/gu;
+  return /(?<![\w:])(?:\/(?:[A-Za-z0-9_.-]+(?: [A-Za-z0-9_.-]+)*\/)*[A-Za-z0-9_.-]+\.(?:c|css|go|html|java|js|json|jsx|md|mjs|py|rs|sh|ts|tsx|txt|yaml|yml)(?::\d+)?|(?:\.?\.?\/)?(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:c|css|go|html|java|js|json|jsx|md|mjs|py|rs|sh|ts|tsx|txt|yaml|yml)(?::\d+)?)/gu;
 }
 
 function isFilePath(value: string): boolean {
   const match = value.match(filePathPattern());
   return match?.length === 1 && match[0] === value;
+}
+
+export async function writeAnimatedTerminalText(
+  output: NodeJS.WritableStream,
+  text: string,
+  options: { chunkSize?: number; delayMs?: number } = {},
+): Promise<void> {
+  const visibleLength = [...text.replace(/\x1b\[[0-9;]*m/gu, "")].length;
+  const chunkSize =
+    options.chunkSize ?? Math.max(8, Math.ceil(visibleLength / 500));
+  const delayMs = options.delayMs ?? 4;
+  const parts = text.split(/(\x1b\[[0-9;]*m)/gu).filter(Boolean);
+  for (const part of parts) {
+    if (/^\x1b\[[0-9;]*m$/u.test(part)) {
+      output.write(part);
+      continue;
+    }
+    const characters = [...part];
+    for (let index = 0; index < characters.length; index += chunkSize) {
+      output.write(characters.slice(index, index + chunkSize).join(""));
+      if (delayMs > 0) await wait(delayMs);
+    }
+  }
+}
+
+function wait(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 export { ansi };

@@ -4,7 +4,9 @@ import { sanitizeText } from "./repl-banner.js";
 import { createReplProgressDisplay } from "./repl-progress.js";
 import {
   formatRunnerResponse,
+  isInteractiveTerminal,
   supportsTerminalStyle,
+  writeAnimatedTerminalText,
 } from "./terminal-style.js";
 import type { ReplActionOutput, ReplIo, ReplState } from "./repl-types.js";
 
@@ -45,14 +47,15 @@ export async function handlePromptSubmission(
         `Direct ${state.activeRunner} prompt failed [${result.error.code}]: ${result.error.message}`,
       ),
     };
-  return {
-    text: formatRunnerResponse({
-      runner: result.value.runner,
-      model: result.value.model,
-      text: result.value.text,
-      color: supportsTerminalStyle(output),
-    }),
-  };
+  const response = formatRunnerResponse({
+    runner: result.value.runner,
+    model: result.value.model,
+    text: result.value.text,
+    color: supportsTerminalStyle(output),
+  });
+  if (!isInteractiveTerminal(output)) return { text: response };
+  await writeAnimatedTerminalText(output, `${response}\n`);
+  return { text: "" };
 }
 
 function directRunnerIdentity(

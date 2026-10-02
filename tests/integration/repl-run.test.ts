@@ -57,6 +57,43 @@ await test("dispatchReplLine sends freeform text to direct read-only runner", as
   assert.doesNotMatch(res.text, /Workflow Pipeline Execution Stages/);
 });
 
+await test("interactive direct response streams to the terminal", async () => {
+  const stdout = new PassThrough() as PassThrough & { isTTY?: boolean };
+  stdout.isTTY = true;
+  let captured = "";
+  stdout.on("data", (chunk: Buffer) => {
+    captured += chunk.toString("utf8");
+  });
+  const io: ReplIo = {
+    readConfig: readConfiguration,
+    stdout,
+    directPrompt: () =>
+      Promise.resolve({
+        ok: true,
+        value: {
+          runner: "codex",
+          runnerVersion: "0.159.3",
+          model: "gpt-6-sol",
+          text: "Done.",
+        },
+      }),
+  };
+  const state: ReplState = {
+    configPath: fixture,
+    activeRunner: "codex",
+    rootDir: process.cwd(),
+    activeSessionId: null,
+    exitRequested: false,
+  };
+
+  const result = await dispatchReplLine(state, io, "say done");
+
+  assert.equal(result.text, "");
+  assert.match(captured, /codex response/u);
+  assert.match(captured, /Done\./u);
+  assert.match(captured, /not Quorum approval evidence/u);
+});
+
 await test("freeform prompt reports direct runner failure without claiming dispatch", async () => {
   const io: ReplIo = {
     readConfig: readConfiguration,

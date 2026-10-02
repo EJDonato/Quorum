@@ -26,15 +26,19 @@ export function createReplProgressDisplay(options: {
   const { output, runner } = options;
   const color = options.color ?? supportsTerminalStyle(output);
   if (!color) return createPlainDisplay(output, runner);
+  const startedAt = Date.now();
   let frameIndex = 0;
   let currentMessage = "Preparing runner";
+  let currentPhase: DirectPromptProgress["phase"] = "starting";
+  let lastLogged = "";
   let stopped = false;
   const render = () => {
     const frame = frames[frameIndex % frames.length] ?? "⠋";
-    const verb = verbs[Math.floor(frameIndex / 8) % verbs.length] ?? "Working";
+    const verb = loadingVerb(Date.now() - startedAt);
     frameIndex += 1;
+    const messageColor = progressColor(currentPhase);
     output.write(
-      `\r\x1b[2K${ansi.cyan}[${runner}]${ansi.reset} ${ansi.magenta}${frame} ${verb}${ansi.reset} ${ansi.dim}· ${currentMessage}${ansi.reset}`,
+      `\r\x1b[2K${ansi.cyan}[${runner}]${ansi.reset} ${ansi.magenta}${frame} ${verb}${ansi.reset} ${ansi.dim}·${ansi.reset} ${messageColor}${boundedMessage(output, runner, currentMessage)}${ansi.reset}`,
     );
   };
   render();
@@ -44,7 +48,14 @@ export function createReplProgressDisplay(options: {
     report(progress) {
       if (stopped) return;
       currentMessage = sanitizeText(progress.message);
-      output.write(`\r\x1b[2K${formatProgressLine(runner, progress)}\n`);
+      currentPhase = progress.phase;
+      const shouldLog =
+        progress.phase !== "tool" && progress.phase !== "working";
+      const logKey = `${progress.phase}:${currentMessage}`;
+      if (shouldLog && logKey !== lastLogged) {
+        output.write(`\r\x1b[2K${formatProgressLine(runner, progress)}\n`);
+        lastLogged = logKey;
+      }
       render();
     },
     stop() {
@@ -54,6 +65,24 @@ export function createReplProgressDisplay(options: {
       output.write("\r\x1b[2K");
     },
   };
+}
+
+export function loadingVerb(elapsedMs: number): string {
+  const index = Math.floor(Math.max(0, elapsedMs) / 10_000) % verbs.length;
+  return verbs[index] ?? "Working";
+}
+
+function boundedMessage(
+  output: NodeJS.WritableStream,
+  runner: RunnerName,
+  message: string,
+): string {
+  const columns = (output as { columns?: number }).columns ?? 80;
+  const available = Math.max(20, columns - runner.length - 30);
+  const characters = [...message];
+  return characters.length <= available
+    ? message
+    : `${characters.slice(0, available - 1).join("")}…`;
 }
 
 function createPlainDisplay(
@@ -72,13 +101,6 @@ function formatProgressLine(
   runner: RunnerName,
   progress: DirectPromptProgress,
 ): string {
-  const colors = {
-    checking: ansi.blue,
-    starting: ansi.magenta,
-    working: ansi.cyan,
-    tool: ansi.green,
-    finishing: ansi.yellow,
-  };
   const symbols = {
     checking: "◇",
     starting: "◆",
@@ -86,6 +108,16 @@ function formatProgressLine(
     tool: "→",
     finishing: "✓",
   };
-  const color = colors[progress.phase];
+  const color = progressColor(progress.phase);
   return `${ansi.cyan}[${runner}]${ansi.reset} ${color}${symbols[progress.phase]} ${sanitizeText(progress.message)}${ansi.reset}`;
+}
+
+function progressColor(phase: DirectPromptProgress["phase"]): string {
+  return {
+    checking: ansi.blue,
+    starting: ansi.magenta,
+    working: ansi.cyan,
+    tool: ansi.green,
+    finishing: ansi.yellow,
+  }[phase];
 }
