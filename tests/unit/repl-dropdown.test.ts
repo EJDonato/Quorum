@@ -42,6 +42,10 @@ await test("getMatchingSlashCommands filters commands dynamically as user types"
   // Once a space is typed after command, dropdown should close
   const withArgs = getMatchingSlashCommands("/doctor --verbose");
   assert.equal(withArgs.length, 0);
+  assert.equal(
+    SLASH_COMMAND_DEFINITIONS.some((command) => command.name === "/quit"),
+    false,
+  );
 });
 
 await test("formatDropdownRow marks selected row with cursor pointer", () => {

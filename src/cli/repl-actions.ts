@@ -159,7 +159,7 @@ export async function dispatchReplLine(
   const trimmed = line.trim();
   if (!trimmed) return { text: "" };
 
-  if (trimmed === "/exit" || trimmed === "/quit") {
+  if (trimmed === "/exit") {
     state.exitRequested = true;
     return { text: "Exiting Quorum CLI. Goodbye!", shouldExit: true };
   }

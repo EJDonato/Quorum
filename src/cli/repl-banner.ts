@@ -40,7 +40,7 @@ export function formatHelp(isColor: boolean): string {
     `  ${yellow}/status${reset}              Check active session and lease state`,
     `  ${yellow}/diff${reset}                Display current candidate diff`,
     `  ${yellow}/clear${reset}               Clear terminal screen`,
-    `  ${yellow}/exit, /quit${reset}         Exit the Quorum CLI terminal`,
+    `  ${yellow}/exit${reset}                Exit the Quorum CLI terminal`,
     "",
     `${bold}Prompt Usage:${reset}`,
     "  Type natural language directly for a read-only runner response.",

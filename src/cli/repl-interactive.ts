@@ -18,6 +18,10 @@ function refreshDisplay(
   stdout: NodeJS.WritableStream,
   state: BufferState,
 ): void {
+  if (state.dropdownLineCount > 0) {
+    clearDropdown(stdout, state.dropdownLineCount, 0);
+    state.dropdownLineCount = 0;
+  }
   const cursorCol = PROMPT_STR.length + state.cursorIndex;
   stdout.write(`\r\x1b[K${PROMPT_COLOR}${state.buffer}`);
 
@@ -28,9 +32,6 @@ function refreshDisplay(
       selectedIndex: state.selectedIndex,
       cursorCol,
     });
-  } else if (state.dropdownLineCount > 0) {
-    clearDropdown(stdout, state.dropdownLineCount, cursorCol);
-    state.dropdownLineCount = 0;
   } else {
     const moveRight = cursorCol > 0 ? `\x1b[${cursorCol}C` : "";
     stdout.write(`\r${moveRight}`);
@@ -136,16 +137,14 @@ export async function runInteractiveTerminal(
 }
 
 function bindTerminalEvents(ctx: TerminalContext): void {
-  const { stdin, stdout, state, replState, resolve } = ctx;
+  const { stdin, stdout, state, replState } = ctx;
 
   const keyHandler = (str: string | undefined, key: readline.Key): void => {
     if ((key.ctrl && key.name === "c") || (key.ctrl && key.name === "d")) {
       clearDropdown(stdout, state.dropdownLineCount, 0);
-      stdin.removeListener("keypress", keyHandler);
-      stdin.setRawMode?.(false);
       stdout.write("\nExiting Quorum CLI. Goodbye!\n");
       replState.exitRequested = true;
-      resolve();
+      closeInteractiveTerminal(ctx, keyHandler);
       return;
     }
     if (key.name === "return") {
@@ -168,7 +167,7 @@ async function handleSubmitLine(
   ctx: TerminalContext,
   keyHandler: (str: string | undefined, key: readline.Key) => void,
 ): Promise<void> {
-  const { stdin, stdout, state, io, replState, resolve } = ctx;
+  const { stdin, stdout, state, io, replState } = ctx;
   const matches = getMatchingSlashCommands(state.buffer);
   if (matches.length > 0 && !state.buffer.includes(" ")) {
     const sel = matches[state.selectedIndex] ?? matches[0];
@@ -189,8 +188,7 @@ async function handleSubmitLine(
   if (output.text) stdout.write(output.text + "\n");
 
   if (output.shouldExit || replState.exitRequested) {
-    stdin.removeListener("keypress", keyHandler);
-    resolve();
+    closeInteractiveTerminal(ctx, keyHandler, false);
     return;
   }
 
@@ -200,4 +198,15 @@ async function handleSubmitLine(
   state.dropdownLineCount = 0;
   stdin.setRawMode?.(true);
   refreshDisplay(stdout, state);
+}
+
+function closeInteractiveTerminal(
+  ctx: TerminalContext,
+  keyHandler: (str: string | undefined, key: readline.Key) => void,
+  disableRawMode = true,
+): void {
+  ctx.stdin.removeListener("keypress", keyHandler);
+  if (disableRawMode) ctx.stdin.setRawMode?.(false);
+  ctx.stdin.pause();
+  ctx.resolve();
 }

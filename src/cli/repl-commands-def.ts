@@ -72,12 +72,6 @@ export const SLASH_COMMAND_DEFINITIONS: readonly SlashCommandDefinition[] = [
     description: "Exit the Quorum CLI terminal",
     needsArg: false,
   },
-  {
-    name: "/quit",
-    syntax: "/quit",
-    description: "Exit the Quorum CLI terminal",
-    needsArg: false,
-  },
 ];
 
 export function getMatchingSlashCommands(
