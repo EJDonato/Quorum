@@ -247,7 +247,7 @@ Historical starting backlog (not full milestone exit gates):
 - [x] Implement the initial schema/error contracts and pure session reducer.
 - [x] Demonstrate one rejected transition and one crash-replayed transition before connecting real model-driven mutations.
 
-Rejected transitions, durable journal reconstruction, stale-cache rejection, and interrupted finalization recovery are tested offline. Full workflow effect/restart reconciliation remains pending. M0 remains BLOCKED: candidate Codex enforcement components, Antigravity fixtures and generic cgroup cancellation exist, but the pinned runners have not passed the final containerized conformance path. Antigravity still lacks real upstream forwarding and complete provider accounting; `test:conformance` and capability-aware `doctor` remain unavailable.
+Rejected transitions, durable journal reconstruction, stale-cache rejection, and interrupted finalization recovery are tested offline. Full workflow effect/restart reconciliation remains pending. M0 remains BLOCKED: candidate Codex enforcement components, Antigravity hook/upstream components and generic cgroup cancellation exist, but the pinned runners have not passed the final containerized conformance path. Antigravity's real hook and provider stream semantics remain unverified; `test:conformance` and capability-aware `doctor` remain unavailable.
 
 Next: integrate containerized runner adapters with the broker and workflow orchestrator, followed by release-only conformance evaluation. Production runner integration still requires observed conformance evidence.
 

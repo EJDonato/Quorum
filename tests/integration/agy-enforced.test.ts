@@ -18,7 +18,11 @@ import { failure } from "../../src/contracts/errors.js";
 
 async function setupAgyProxyHarness(
   t: TestContext,
-  options: { budget?: number } = {},
+  options: {
+    budget?: number;
+    countDigestMismatch?: boolean;
+    revokeAfterCount?: boolean;
+  } = {},
 ): Promise<{
   proxy: AgyStreamingProxy;
   root: string;
@@ -44,6 +48,7 @@ async function setupAgyProxyHarness(
   });
   assert.ok(ledger.ok);
 
+  let authorizations = 0;
   const gateway: ModelGatewayOptions<unknown> = {
     provider: {
       capability: Object.freeze({
@@ -64,7 +69,9 @@ async function setupAgyProxyHarness(
         return Promise.resolve({
           ok: true,
           value: {
-            payload_digest: digest.value,
+            payload_digest: options.countDigestMismatch
+              ? "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+              : digest.value,
             input_tokens: Buffer.byteLength(text.value),
           },
         });
@@ -77,7 +84,14 @@ async function setupAgyProxyHarness(
     instructions: "Host instructions",
     outputTokensLimit: 32,
     hash: canonicalDigest,
-    authorize: () => Promise.resolve({ ok: true as const, value: undefined }),
+    authorize: () => {
+      authorizations++;
+      return Promise.resolve(
+        options.revokeAfterCount && authorizations > 1
+          ? failure("STALE_INPUT", "Fixture authorization revoked.")
+          : { ok: true as const, value: undefined },
+      );
+    },
     verifyCapability: () =>
       Promise.resolve({ ok: true as const, value: undefined }),
   };
@@ -86,6 +100,27 @@ async function setupAgyProxyHarness(
     gateway,
     model: "gemini-3.8-flash-medium",
     outputTokensLimit: 32,
+    kind: "fixture",
+    fixtureResponse: (payload) => {
+      const serialized = canonicalSerialize(payload);
+      assert.ok(serialized.ok);
+      const inputTokens = Buffer.byteLength(serialized.value);
+      return {
+        candidates: [
+          {
+            content: { parts: [{ text: "fixture response" }] },
+            finishReason: "STOP",
+          },
+        ],
+        usageMetadata: {
+          promptTokenCount: inputTokens,
+          candidatesTokenCount: 3,
+          totalTokenCount: inputTokens + 3,
+          cachedContentTokenCount: 0,
+          thoughtsTokenCount: 0,
+        },
+      };
+    },
   });
   assert.ok(started.ok);
   t.after(() => started.value.close());
@@ -232,4 +267,31 @@ await test("agy proxy enforces hard token ceiling and rejects when budget exhaus
   assert.equal(genRes.status, 429);
   const errJson = (await genRes.json()) as { error: { code: string } };
   assert.equal(errJson.error.code, "BUDGET_EXHAUSTED");
+});
+
+await test("agy proxy rejects a count for another payload before reservation", async (t) => {
+  const { proxy, root } = await setupAgyProxyHarness(t, {
+    countDigestMismatch: true,
+  });
+  const response = await fetch(`${proxy.url}/v1internal:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [] }),
+  });
+  assert.equal(response.status, 502);
+  assert.deepEqual(await readdir(join(root, "events")), []);
+});
+
+await test("agy proxy reauthorizes after durable reservation", async (t) => {
+  const { proxy, root } = await setupAgyProxyHarness(t, {
+    revokeAfterCount: true,
+  });
+  const response = await fetch(`${proxy.url}/v1internal:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [] }),
+  });
+  assert.equal(response.status, 502);
+  const events = await readdir(join(root, "events"));
+  assert.equal(events.length, 1);
 });

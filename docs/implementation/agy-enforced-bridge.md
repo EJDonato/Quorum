@@ -1,6 +1,6 @@
 # Antigravity Enforced Bridge Implementation
 
-**Status:** Tool-gate and fixture reservation components implemented. Real upstream forwarding, real-runner hook execution and complete provider accounting remain blocked.
+**Status:** Tool-gate and bounded upstream proxy components implemented with offline fixtures. Real-runner hook execution, provider semantics and final-container conformance remain unverified.
 
 ---
 
@@ -32,12 +32,12 @@ The Antigravity Enforced Bridge introduces two dedicated components placed under
 - **Local Loopback Endpoint:** Binds to `127.0.0.1` and handles requests routed via `CLOUD_CODE_URL`.
 - **API Handshakes:** Responds to `v1internal:loadCodeAssist` and `v1internal:fetchAvailableModels` with pinned configuration models and paid tier authorization.
 - **Pre-Request Token Reservations:** On `generateContent` or `streamGenerateContent`:
-  1. Counts input tokens using `gateway.provider.countInput`.
-  2. Binds payload digest and capability digest.
+  1. Verifies the configured capability and current authorization.
+  2. Counts input tokens and requires the count digest to match the canonical request payload.
   3. Appends an atomic `reserved` event to [`ModelLedgerPort`](../../src/application/model-gateway-ports.ts). If the session budget is exhausted, rejects immediately with HTTP 429 (`BUDGET_EXHAUSTED`).
-- **Fixture Accounting Only:**
-  - The current implementation returns a synthetic response and records a fixed ten output tokens.
-  - `upstreamUrl` and `upstreamCredential` are not used for provider forwarding. This cannot establish credential isolation, a provider ceiling or complete accounting.
+  4. Rechecks authorization before resolving credentials or contacting the upstream.
+- **Explicit Response Modes:** Tests must opt into `kind: "fixture"`; there is no implicit synthetic fallback. `kind: "upstream"` accepts only the allowlisted Cloud Code origin or an explicit IPv4 loopback fixture, denies redirects, applies response and timeout bounds, and supplies the credential in the proxy-owned authorization header.
+- **Strict Settlement:** The proxy buffers the bounded JSON or SSE response, requires exactly one complete `usageMetadata` record, conservatively derives output from `totalTokenCount - promptTokenCount`, validates cache/thinking overlap, requires provider input usage to equal the pre-request count, and publishes the response only after durable settlement. Missing, duplicate, inconsistent, interrupted or over-limit accounting leaves the reservation charged for reconciliation.
 - **Clean Shutdown:** Tracks open sockets and closes connections cleanly upon test or session termination.
 
 ---
@@ -57,15 +57,21 @@ The Antigravity Enforced Bridge introduces two dedicated components placed under
    - Complete API handshake and generation loop through `AgyStreamingProxy`.
    - Durable file ledger verification confirming sequential `reserved` and `settled` events in `events/`.
    - Hard token ceiling rejection with HTTP 429 when budget is exhausted.
+   - Count-digest substitution rejection before reservation and authorization revocation after reservation.
+
+3. **Upstream Tests ([`tests/integration/agy-upstream.test.ts`](../../tests/integration/agy-upstream.test.ts), [`tests/unit/agy-upstream.test.ts`](../../tests/unit/agy-upstream.test.ts)):**
+   - Canonical request forwarding to a loopback upstream with a proxy-owned credential.
+   - Settlement from returned cache, thinking and total usage instead of a fabricated token value.
+   - Reservation retention when usage is absent, plus endpoint allowlist and duplicate-usage rejection.
 
 ---
 
 ## 4. Capability Matrix Update
 
-| Capability                     | Status         | Implementation Mechanism                                                                                      |
-| :----------------------------- | :------------- | :------------------------------------------------------------------------------------------------------------ |
-| **1. Broker-Only Tools**       | **PARTIAL**    | Standalone hook gate denies native names; actual `agy` lifecycle invocation still needs conformance evidence. |
-| **2. Credential Isolation**    | **UNVERIFIED** | Proposed loopback route exists, but real upstream forwarding and runner environment evidence are absent.      |
-| **3. Hard Token Ceilings**     | **PARTIAL**    | Fixture reservation rejects exhausted allocations; actual forwarded requests are not implemented.             |
-| **4. Complete Accounting**     | **BLOCKED**    | Current response and ten-token settlement are synthetic.                                                      |
-| **5. Descendant Cancellation** | **PARTIAL**    | Generic cgroup cancellation passed; the pinned runner was not exercised in that container.                    |
+| Capability                     | Status      | Implementation Mechanism                                                                                                                       |
+| :----------------------------- | :---------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Broker-Only Tools**       | **PARTIAL** | Standalone hook gate denies native names; actual `agy` lifecycle invocation still needs conformance evidence.                                  |
+| **2. Credential Isolation**    | **PARTIAL** | Proxy-owned upstream credential and restricted destinations pass loopback tests; real runner environment and egress evidence are absent.       |
+| **3. Hard Token Ceilings**     | **PARTIAL** | Exact-count reservation and returned-usage bounds pass through a fake upstream; actual provider/iteration enforcement is unverified.           |
+| **4. Complete Accounting**     | **PARTIAL** | JSON/SSE usage validation and uncertain reservation retention pass fixtures; actual cumulative stream and hidden-retry behavior is unverified. |
+| **5. Descendant Cancellation** | **PARTIAL** | Generic cgroup cancellation passed; the pinned runner was not exercised in that container.                                                     |

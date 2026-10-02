@@ -81,10 +81,10 @@ The [Antigravity offline probe](../implementation/agy-offline-protocol.md) exerc
 
 ## Implemented Antigravity Enforced Bridge, 2026-10-02
 
-The [Antigravity Enforced Bridge](../implementation/agy-enforced-bridge.md) resolves both the native tool leak and credential isolation barriers:
+The [Antigravity Enforced Bridge](../implementation/agy-enforced-bridge.md) implements candidate controls for the native tool leak and credential isolation barriers. These controls remain component-level until exercised through the pinned runner:
 
 1. **Broker-Only Tools via Lifecycle Hooks:** A synchronous `PreToolUse` hook in `.agents/hooks.json` with wildcard matcher (`*`) intercepts every tool invocation. Native tools (`run_command`, `write_to_file`, `browser_*`, etc.) are hard-blocked with `{"decision": "deny"}` before any side effect occurs. Only authorized broker tools (`repo.read`, `repo.search`, etc.) return `{"decision": "allow"}`.
-2. **Credential Isolation & Pre-Request Budgeting:** Antigravity routes model traffic via `CLOUD_CODE_URL` to a loopback streaming proxy (`src/infrastructure/adapters/agy/model-proxy.ts`). The proxy intercepts handshakes, counts input tokens, creates durable reservations on `ModelLedgerPort` before generation, enforces the hard token limit (rejecting with HTTP 429 when budget is exhausted), and settles the ledger with complete usage accounting. Real credentials never enter the runner environment.
+2. **Credential Isolation & Pre-Request Budgeting:** The candidate `CLOUD_CODE_URL` route terminates at a loopback proxy (`src/infrastructure/adapters/agy/model-proxy.ts`). The proxy intercepts handshakes, binds exact counts, durably reserves before credential resolution/upstream transmission, reauthorizes, restricts the upstream origin and settles only from bounded complete usage. Loopback fixtures prove the proxy behavior; they do not yet prove that CLI 1.2.14 uses the route exclusively or that real credentials are unreachable from its final container.
 
 ## Container Descendant Cancellation Verification, 2026-10-02
 
@@ -99,12 +99,12 @@ The container descendant cancellation probe (`npm run probe:container:cancellati
 
 The implemented components are useful prerequisites, but no retained test starts either pinned runner inside the final container, routes its real protocol through the corresponding proxy and broker, exercises a denied effect, interrupts it, and emits a complete capability receipt. `test:conformance` is still unavailable and `doctor` deliberately reports unverified capabilities.
 
-| Capability                     | Codex 0.159.3 Status                                                                                  | Antigravity 1.2.14 Status                                                                                |
-| :----------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------- |
-| **1. Broker-only tools**       | **PARTIAL:** retained fake-provider request contains only `repo.read`; final container path untested. | **PARTIAL:** standalone hook gate denies native names; real `agy` hook invocation is untested.           |
-| **2. Credential isolation**    | **PARTIAL:** loopback design exists; final runner environment and egress route are untested.          | **PARTIAL:** `CLOUD_CODE_URL` design exists; current proxy has no real upstream forwarding path.         |
-| **3. Hard token ceilings**     | **PARTIAL:** proxy reserves before fixture upstream and now rejects mismatched counts.                | **PARTIAL:** fixture reservation exists; actual provider request forwarding and enforcement are absent.  |
-| **4. Complete accounting**     | **PARTIAL:** bounded SSE fixture settlement exists; provider/iteration conformance is untested.       | **BLOCKED:** the bridge fabricates a fixed ten-token settlement instead of parsing an upstream response. |
-| **5. Descendant cancellation** | **PARTIAL:** generic Docker cgroup removal passed; pinned Codex was not the contained process.        | **PARTIAL:** generic Docker cgroup removal passed; pinned `agy` was not the contained process.           |
+| Capability                     | Codex 0.159.3 Status                                                                                  | Antigravity 1.2.14 Status                                                                                                              |
+| :----------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Broker-only tools**       | **PARTIAL:** retained fake-provider request contains only `repo.read`; final container path untested. | **PARTIAL:** standalone hook gate denies native names; real `agy` hook invocation is untested.                                         |
+| **2. Credential isolation**    | **PARTIAL:** loopback design exists; final runner environment and egress route are untested.          | **PARTIAL:** restricted upstream forwarding owns fixture credentials; CLI routing and bypass resistance are untested.                  |
+| **3. Hard token ceilings**     | **PARTIAL:** proxy reserves before fixture upstream and now rejects mismatched counts.                | **PARTIAL:** exact-count reservation and usage bounds pass a fake upstream; provider/iteration enforcement is unverified.              |
+| **4. Complete accounting**     | **PARTIAL:** bounded SSE fixture settlement exists; provider/iteration conformance is untested.       | **PARTIAL:** strict JSON/SSE settlement and uncertain reservation retention pass fixtures; real stream/retry semantics are unverified. |
+| **5. Descendant cancellation** | **PARTIAL:** generic Docker cgroup removal passed; pinned Codex was not the contained process.        | **PARTIAL:** generic Docker cgroup removal passed; pinned `agy` was not the contained process.                                         |
 
 **Milestone M0 remains BLOCKED.** It can move only after the real version-pinned conformance path passes independently for both runners and `doctor` consumes those retained receipts.
