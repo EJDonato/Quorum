@@ -193,10 +193,12 @@ await test("/run slash command validates prompt and executes session runner", as
             current_candidate_id: "cand-1",
             input_digest: "sha256:" + "0".repeat(64),
             limits: {
-              model_tokens: 1000,
+              repairs_per_stage: 2,
+              repairs_total: 5,
+              invocation_timeout_ms: 600000,
+              check_timeout_ms: 600000,
               active_session_ms: 10000,
-              max_repairs_per_stage: 2,
-              max_repairs_total: 5,
+              model_tokens: 1000,
             },
             budget: {
               repairs_by_stage: {
@@ -216,13 +218,21 @@ await test("/run slash command validates prompt and executes session runner", as
           candidateId: "cand-1",
           receipt: {
             schema_version: "1.0.0",
+            transaction_id: "tx-1",
             session_id: opts.sessionId,
-            commit_oid: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
             candidate_id: "cand-1",
-            tree_oid: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
-            parent_oid: opts.baseSha,
-            ballot_digest: "sha256:" + "1".repeat(64),
-            committed_at: new Date().toISOString(),
+            commit: {
+              format: "sha1",
+              oid: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            },
+            tree: {
+              format: "sha1",
+              oid: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            },
+            parent: { format: "sha1", oid: opts.baseSha },
+            evidence_refs: [
+              { artifact_id: "art-1", digest: "sha256:" + "1".repeat(64) },
+            ],
           },
         },
       });
@@ -243,8 +253,10 @@ await test("/run slash command validates prompt and executes session runner", as
   const ran = await dispatchReplLine(state, io, "/run Add test helper");
   assert.match(ran.text, /completed!/);
   assert.match(ran.text, /State: COMPLETED/);
-  assert.match(ran.text, /Commit OID: 4b825dc642cb6eb9a060e54bf8d69288fbee4904/);
+  assert.match(
+    ran.text,
+    /Commit OID: 4b825dc642cb6eb9a060e54bf8d69288fbee4904/,
+  );
   assert.equal(sessionExecuted, true);
   assert.ok(state.activeSessionId);
 });
-

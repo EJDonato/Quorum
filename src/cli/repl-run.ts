@@ -56,6 +56,13 @@ export async function handleRunCommand(
     commit: true,
   });
 
+  return formatRunResult(sessionId, result);
+}
+
+function formatRunResult(
+  sessionId: string,
+  result: Awaited<ReturnType<typeof runSession>>,
+): ReplActionOutput {
   if (!result.ok) {
     return {
       text: `Session ${sessionId} halted:\n  [${result.error.code}] ${result.error.message}`,
@@ -65,7 +72,7 @@ export async function handleRunCommand(
     `Session ${sessionId} completed!\n  State: ${result.value.state.state}`,
   ];
   if (result.value.receipt) {
-    out.push(`  Commit OID: ${result.value.receipt.commit_oid}`);
+    out.push(`  Commit OID: ${result.value.receipt.commit.oid}`);
   }
   return { text: out.join("\n") };
 }

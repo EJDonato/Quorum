@@ -163,12 +163,12 @@ export async function dispatchReplLine(
   if (trimmed === "/help") {
     return { text: formatHelp(Boolean(process.stdout?.isTTY)) };
   }
-  if (trimmed.startsWith("/run")) {
-    return handleRunCommand(state, io, trimmed.slice(4).trim());
-  }
-  if (trimmed.startsWith("/runner")) {
+  if (trimmed === "/runner" || trimmed.startsWith("/runner ")) {
     const parts = trimmed.split(/\s+/);
     return handleRunnerCommand(state, parts[1]);
+  }
+  if (trimmed === "/run" || trimmed.startsWith("/run ")) {
+    return handleRunCommand(state, io, trimmed.slice(4).trim());
   }
   if (trimmed === "/doctor") {
     return handleDoctorCommand(state, io);

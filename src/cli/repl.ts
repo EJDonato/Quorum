@@ -1,20 +1,9 @@
 import * as readline from "node:readline";
 import { formatBanner } from "./repl-banner.js";
 import { dispatchReplLine } from "./repl-actions.js";
+import { runInteractiveTerminal } from "./repl-interactive.js";
+import { SLASH_COMMAND_DEFINITIONS } from "./repl-commands-def.js";
 import type { ReplIo, ReplState, RunnerName } from "./repl-types.js";
-
-const SLASH_COMMANDS = [
-  "/help",
-  "/run",
-  "/runner",
-  "/doctor",
-  "/config",
-  "/status",
-  "/diff",
-  "/clear",
-  "/exit",
-  "/quit",
-];
 
 export async function createInitialReplState(
   io: ReplIo,
@@ -38,11 +27,45 @@ export async function createInitialReplState(
   };
 }
 
-function createCompleter() {
-  return (line: string): [string[], string] => {
-    const hits = SLASH_COMMANDS.filter((cmd) => cmd.startsWith(line));
-    return [hits.length ? hits : SLASH_COMMANDS, line];
+function startFallbackRepl(io: ReplIo, state: ReplState): Promise<void> {
+  const stdin = io.stdin ?? process.stdin;
+  const stdout = io.stdout ?? process.stdout;
+  const isTTY = Boolean((stdout as unknown as { isTTY?: boolean }).isTTY);
+
+  const completer = (line: string): [string[], string] => {
+    const names = SLASH_COMMAND_DEFINITIONS.map((c) => c.name);
+    const hits = names.filter((cmd) => cmd.startsWith(line));
+    return [hits.length ? hits : names, line];
   };
+
+  const rl = readline.createInterface({
+    input: stdin,
+    output: stdout,
+    prompt: isTTY ? "\x1b[1;36mquorum>\x1b[0m " : "quorum> ",
+    completer,
+  });
+
+  rl.prompt();
+
+  return new Promise<void>((resolve) => {
+    let queue = Promise.resolve();
+    rl.on("line", (line: string) => {
+      queue = queue.then(async () => {
+        if (state.exitRequested) return;
+        const output = await dispatchReplLine(state, io, line);
+        if (output.text) stdout.write(output.text + "\n");
+        if (output.shouldExit || state.exitRequested) {
+          rl.close();
+        } else {
+          rl.prompt();
+        }
+      });
+    });
+
+    rl.on("close", () => {
+      void queue.then(() => resolve());
+    });
+  });
 }
 
 export async function startRepl(
@@ -56,32 +79,12 @@ export async function startRepl(
   const state = initialState ?? (await createInitialReplState(io));
   stdout.write(formatBanner(state, isTTY) + "\n");
 
-  const rl = readline.createInterface({
-    input: stdin,
-    output: stdout,
-    prompt: isTTY ? "\x1b[1;36mquorum>\x1b[0m " : "quorum> ",
-    completer: createCompleter(),
-  });
+  const canUseRawMode =
+    isTTY && typeof (stdin as NodeJS.ReadStream).setRawMode === "function";
 
-  rl.prompt();
-
-  return new Promise<void>((resolve) => {
-    rl.on("line", (line: string) => {
-      void (async () => {
-        const output = await dispatchReplLine(state, io, line);
-        if (output.text) {
-          stdout.write(output.text + "\n");
-        }
-        if (output.shouldExit || state.exitRequested) {
-          rl.close();
-          return;
-        }
-        rl.prompt();
-      })();
-    });
-
-    rl.on("close", () => {
-      resolve();
-    });
-  });
+  if (canUseRawMode) {
+    await runInteractiveTerminal(io, state);
+  } else {
+    await startFallbackRepl(io, state);
+  }
 }
