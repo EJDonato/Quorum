@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "codex_container_image_probe",
+  "image_id": "sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+  "runner_path": "/usr/local/bin/codex",
+  "expected_version": "0.159.3",
+  "observed_version": null,
+  "docker_version": "29.6.2",
+  "image_present": true,
+  "linux_image": true,
+  "no_declared_volumes": false,
+  "container_created": false,
+  "container_configuration_verified": false,
+  "executable_digest": null,
+  "version_command_passed": false,
+  "cleanup_confirmed": true,
+  "failure": "IMAGE_POLICY_FAILED",
+  "final_container_conformance": false,
+  "mandatory_capabilities": "PARTIAL"
+}
