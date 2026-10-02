@@ -8,6 +8,7 @@ import type { Outcome } from "../contracts/errors.js";
 import type { CommitReceipt } from "../contracts/receipt.js";
 import type { SessionState } from "../contracts/session.js";
 import type { WorkspacePaths } from "../infrastructure/workspace/manager.js";
+import type { TestPreparationEvaluation } from "./evaluate-test-preparation.js";
 
 export interface SessionRunResult {
   sessionId: string;
@@ -32,6 +33,9 @@ export interface OrchestrationHooks {
 
 export interface WorkflowVerification {
   preflight: () => Promise<Outcome<void>>;
+  testPreparation?: (
+    workspace: WorkspacePaths,
+  ) => Promise<Outcome<TestPreparationEvaluation>>;
   identity: Omit<
     CandidateIdentity,
     "schema_version" | "session_id" | "tree" | "base_commit"

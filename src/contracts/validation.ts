@@ -22,6 +22,7 @@ export const validationReportSchema = z.strictObject({
     .enum(["behavioral", "compiler", "infrastructure"])
     .nullable(),
   tool_version: versionLabel,
+  failure_ids: z.array(opaqueId).max(256).optional(),
   fuzz: z
     .strictObject({
       seed: count,

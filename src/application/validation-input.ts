@@ -2,9 +2,11 @@ import {
   repositoryConfigSchema,
   type RepositoryConfig,
 } from "../contracts/config.js";
-import type { CandidateManifest } from "../contracts/candidate.js";
 import { failure, type Outcome } from "../contracts/errors.js";
-import { verifyCandidateIdentity } from "./candidates.js";
+import {
+  prepareCheckTarget,
+  type PreparedCheckTarget,
+} from "./check-target.js";
 import type { RunCheckOptions } from "./validation-ports.js";
 export function validationEnvironment(
   config: Pick<RepositoryConfig, "validation_image">,
@@ -31,17 +33,17 @@ export function validationEnvironment(
 
 export function prepareValidation(options: RunCheckOptions): Outcome<{
   config: RepositoryConfig;
-  candidate: CandidateManifest;
+  target: PreparedCheckTarget;
   command: RepositoryConfig["commands"][number];
   configDigest: string;
   commandDigest: string;
   envDigest: string;
 }> {
   const config = repositoryConfigSchema.safeParse(options.config);
-  const candidate = verifyCandidateIdentity(options.candidate, options.ports);
+  const target = prepareCheckTarget(options, options.ports);
   if (!config.success)
     return failure("INVALID_INPUT", "Invalid frozen validation configuration.");
-  if (!candidate.ok) return candidate;
+  if (!target.ok) return target;
   if (config.data.mode !== "enforced")
     return failure(
       "CAPABILITY_MISSING",
@@ -61,8 +63,8 @@ export function prepareValidation(options: RunCheckOptions): Outcome<{
   if (!commandDigest.ok) return commandDigest;
   if (!envDigest.ok) return envDigest;
   if (
-    candidate.value.identity.configuration_digest !== configDigest.value ||
-    candidate.value.identity.validation_environment_digest !== envDigest.value
+    target.value.configurationDigest !== configDigest.value ||
+    target.value.environmentDigest !== envDigest.value
   )
     return failure(
       "STALE_INPUT",
@@ -72,7 +74,7 @@ export function prepareValidation(options: RunCheckOptions): Outcome<{
     ok: true,
     value: {
       config: config.data,
-      candidate: candidate.value,
+      target: target.value,
       command,
       configDigest: configDigest.value,
       commandDigest: commandDigest.value,

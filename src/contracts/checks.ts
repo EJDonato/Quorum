@@ -49,6 +49,7 @@ export const checkResultSchema = z
     failure_class: z
       .enum(["behavioral", "compiler", "infrastructure"])
       .nullable(),
+    failure_ids: z.array(opaqueId).max(256).optional(),
     fuzz: z
       .strictObject({
         seed: count,

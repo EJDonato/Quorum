@@ -4,7 +4,7 @@ import {
 } from "../fixtures/workflow.js";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -63,9 +63,10 @@ await test("offline vertical slice completes end-to-end with matching commit tre
           return { ok: true, value: undefined };
         },
         onTestAuthor: async (workspace) => {
+          await mkdir(join(workspace.draftDir, "tests"));
           await writeFile(
-            join(workspace.draftDir, "app.test.ts"),
-            "import { answer } from './app';\nassert.equal(answer, 42);\n",
+            join(workspace.draftDir, "tests", "app.test.ts"),
+            "import { answer } from '../app';\nassert.equal(answer, 42);\n",
           );
           return { ok: true, value: undefined };
         },

@@ -78,16 +78,16 @@ function createIntent(
   ready: Extract<ReturnType<typeof prepareValidation>, { ok: true }>["value"],
   timeoutMs: number,
 ) {
-  const { config, candidate, command } = ready;
+  const { config, target, command } = ready;
   const id = randomUUID().replaceAll("-", "");
   const intent = validationIntentSchema.safeParse({
     schema_version: "1.0.0",
     execution_id: id,
     invocation_id: options.invocationId,
-    session_id: candidate.identity.session_id,
+    session_id: target.sessionId,
     check_id: command.check_id,
-    input: { phase: "final", candidate_id: candidate.candidate_id },
-    tree: candidate.identity.tree,
+    input: target.input,
+    tree: target.tree,
     configuration_digest: ready.configDigest,
     command_digest: ready.commandDigest,
     environment_digest: ready.envDigest,

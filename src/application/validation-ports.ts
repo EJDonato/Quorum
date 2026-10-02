@@ -3,6 +3,7 @@ import type { CheckResult } from "../contracts/checks.js";
 import type { ValidationIntent } from "../contracts/validation.js";
 import type { ArtifactReference } from "../contracts/ballot-input.js";
 import type { Outcome } from "../contracts/errors.js";
+import type { CheckTarget } from "./check-target.js";
 export interface SandboxResult {
   status: "SUCCEEDED" | "FAILED" | "TIMED_OUT" | "CANCELLED";
   exitCode: number | null;
@@ -29,11 +30,10 @@ export interface ValidationPorts {
   persistResult: (record: CheckResult) => Promise<Outcome<ArtifactReference>>;
   now: () => Date;
 }
-export interface RunCheckOptions {
+export type RunCheckOptions = CheckTarget & {
   config: unknown;
-  candidate: unknown;
   checkId: string;
   invocationId: string;
   environment: Record<string, string>;
   ports: ValidationPorts;
-}
+};

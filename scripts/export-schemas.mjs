@@ -31,8 +31,18 @@ import {
   validationIntentSchema,
   validationReportSchema,
 } from "../dist/src/contracts/validation.js";
+import {
+  testSpecificationSchema,
+  preparationSnapshotSchema,
+  testPreparationReceiptSchema,
+  testPreparationPolicySchema,
+} from "../dist/src/contracts/test-specification.js";
 
 const schemas = {
+  TestSpecification: testSpecificationSchema,
+  PreparationSnapshot: preparationSnapshotSchema,
+  TestPreparationReceipt: testPreparationReceiptSchema,
+  TestPreparationPolicy: testPreparationPolicySchema,
   ValidationIntent: validationIntentSchema,
   ValidationReport: validationReportSchema,
   FinalizationIntent: finalizationIntentSchema,

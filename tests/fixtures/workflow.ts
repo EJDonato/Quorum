@@ -12,6 +12,7 @@ import {
   invocation,
 } from "./evidence.js";
 import { createInitialSessionState } from "../../src/application/session-init.js";
+import { fakeWorkflowPreparation } from "./workflow-preparation.js";
 
 export function fakeEvaluation(candidate: CandidateManifest): BallotEvaluation {
   const fixture = fakeBallotFixture();
@@ -65,9 +66,14 @@ export function fakeEvaluation(candidate: CandidateManifest): BallotEvaluation {
 }
 
 export function fakeWorkflowVerification(): WorkflowVerification {
+  const frozenIdentity = { ...identity };
   return {
     preflight: () => Promise.resolve({ ok: true, value: undefined }),
-    identity,
+    identity: frozenIdentity,
+    testPreparation: async (workspace) => ({
+      ok: true,
+      value: await fakeWorkflowPreparation(workspace, frozenIdentity),
+    }),
     evidence: (candidate) =>
       Promise.resolve({ ok: true, value: fakeEvaluation(candidate) }),
   };

@@ -1,4 +1,6 @@
 import { executeFinalize } from "./workflow-finalization.js";
+import { verifyWorkflowPrerequisites } from "./workflow-prerequisites.js";
+import { verifyWorkflowTestPreparation } from "./workflow-test-preparation.js";
 import { ensurePrivateDirectory } from "../infrastructure/workspace/directories.js";
 import { join } from "node:path";
 import { failure, type Outcome } from "../contracts/errors.js";
@@ -25,24 +27,8 @@ export type { OrchestratorOptions, SessionRunResult };
 export async function runSession(
   options: OrchestratorOptions,
 ): Promise<Outcome<SessionRunResult>> {
-  if (!options.verification)
-    return failure(
-      "CAPABILITY_MISSING",
-      "Host preflight and evidence verification are required.",
-    );
-  const preflight = await options.verification.preflight();
-  if (!preflight.ok) return preflight;
-  if (
-    !options.hooks.onPlan ||
-    !options.hooks.onTestAuthor ||
-    !options.hooks.onImplement ||
-    !options.hooks.onValidate ||
-    !options.hooks.onReview
-  )
-    return failure(
-      "CAPABILITY_MISSING",
-      "All required workflow stages must be installed.",
-    );
+  const prerequisites = await verifyWorkflowPrerequisites(options);
+  if (!prerequisites.ok) return prerequisites;
   const quorumDir = join(options.rootDir, ".quorum");
   try {
     await ensurePrivateDirectory(options.rootDir, ".quorum");
@@ -209,6 +195,8 @@ async function validateAndReview(
 async function executeExecutionLoop(
   ctx: WorkflowContext,
 ): Promise<Outcome<SessionRunResult>> {
+  const preparation = await verifyWorkflowTestPreparation(ctx);
+  if (!preparation.ok) return preparation;
   const p3 = await advance(ctx, { type: "TEST_SPEC_ACCEPTED" });
   if (!p3.ok) return p3;
 

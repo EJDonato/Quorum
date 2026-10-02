@@ -21,7 +21,11 @@ if (
 } else {
   const result = spawnSync(
     process.execPath,
-    ["--test", "dist/tests/validation-container/live.test.js"],
+    [
+      "--test",
+      "dist/tests/validation-container/live.test.js",
+      "dist/tests/validation-container/preparation.test.js",
+    ],
     {
       stdio: "inherit",
       env: {

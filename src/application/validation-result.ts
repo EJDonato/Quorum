@@ -117,6 +117,7 @@ function buildRecord(input: {
     error_count: body?.error_count ?? 0,
     warning_count: body?.warning_count ?? 0,
     failure_class: complete ? (body?.failure_class ?? null) : "infrastructure",
+    ...(body?.failure_ids ? { failure_ids: body.failure_ids } : {}),
     fuzz:
       kind === "fuzz"
         ? (body?.fuzz ?? { ...command.fuzz, cases_completed: 0 })

@@ -6,7 +6,8 @@ export function checkPassed(check: CheckResult): boolean {
     check.exit_code !== 0 ||
     !check.report_complete ||
     check.error_count !== 0 ||
-    check.failure_class !== null
+    check.failure_class !== null ||
+    (check.failure_ids?.length ?? 0) > 0
   )
     return false;
   if (
