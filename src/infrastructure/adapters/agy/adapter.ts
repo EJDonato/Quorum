@@ -33,7 +33,7 @@ export interface AgyAdapterOptions {
 
 interface ActiveInvocation {
   controller: AbortController;
-  proxy?: AgyStreamingProxy;
+  proxy?: AgyStreamingProxy | undefined;
 }
 
 export function createAgyRunnerAdapter(
@@ -43,7 +43,14 @@ export function createAgyRunnerAdapter(
 
   return {
     discover: (signal: AbortSignal) => discoverAgy(options, signal),
-    invoke: (req, sig, ws) => invokeAgy(req, sig, ws, options, activeInvocations),
+    invoke: (req, sig, ws) =>
+      invokeAgy({
+        request: req,
+        signal: sig,
+        workspace: ws,
+        options,
+        activeInvocations,
+      }),
     cancel: (id: string) => cancelAgy(id, activeInvocations),
   };
 }
@@ -74,7 +81,7 @@ async function discoverAgy(
     }
   } else {
     const match = runResult.value.stdout.match(/(\d+\.\d+\.\d+[\w.-]*)/u);
-    if (!match) {
+    if (!match || !match[1]) {
       return failure(
         "CAPABILITY_MISSING",
         `Unable to parse agy version from: ${runResult.value.stdout}`,
@@ -107,19 +114,24 @@ async function discoverAgy(
   };
 }
 
+interface InvokeAgyInput {
+  request: InvocationRequest;
+  signal: AbortSignal;
+  workspace: WorkspacePaths | undefined;
+  options: AgyAdapterOptions;
+  activeInvocations: Map<string, ActiveInvocation>;
+}
+
 async function invokeAgy(
-  request: InvocationRequest,
-  signal: AbortSignal,
-  workspace: WorkspacePaths | undefined,
-  options: AgyAdapterOptions,
-  activeInvocations: Map<string, ActiveInvocation>,
+  input: InvokeAgyInput,
 ): Promise<Outcome<InvocationResult>> {
+  const { request, signal, workspace, options, activeInvocations } = input;
   if (signal.aborted) {
     return failure("CANCELLED", "Invocation cancelled before launch.");
   }
   if (workspace) {
     const gateResult = await installAgyToolGateHooks(
-      workspace.draftDir,
+      workspace.workspaceDir,
       "quorum tool-gate-check",
     );
     if (!gateResult.ok) return gateResult;
@@ -131,7 +143,9 @@ async function invokeAgy(
 
   let proxy: AgyStreamingProxy | undefined;
   if (options.streamingProxyOptions) {
-    const proxyResult = await startAgyStreamingProxy(options.streamingProxyOptions);
+    const proxyResult = await startAgyStreamingProxy(
+      options.streamingProxyOptions,
+    );
     if (!proxyResult.ok) {
       signal.removeEventListener("abort", onAbort);
       return proxyResult;

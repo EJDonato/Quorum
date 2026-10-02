@@ -32,7 +32,7 @@ export interface CodexAdapterOptions {
 
 interface ActiveInvocation {
   controller: AbortController;
-  proxy?: CodexStreamingProxy;
+  proxy?: CodexStreamingProxy | undefined;
 }
 
 export function createCodexRunnerAdapter(
@@ -43,7 +43,13 @@ export function createCodexRunnerAdapter(
   return {
     discover: (signal: AbortSignal) => discoverCodex(options, signal),
     invoke: (req, sig, ws) =>
-      invokeCodex(req, sig, ws, options, activeInvocations),
+      invokeCodex({
+        request: req,
+        signal: sig,
+        workspace: ws,
+        options,
+        activeInvocations,
+      }),
     cancel: (id: string) => cancelCodex(id, activeInvocations),
   };
 }
@@ -76,7 +82,7 @@ async function discoverCodex(
     const match = runResult.value.stdout.match(
       /^(?:codex-cli )?(\d+\.\d+\.\d+[\w.-]*)/u,
     );
-    if (!match) {
+    if (!match || !match[1]) {
       return failure(
         "CAPABILITY_MISSING",
         `Unable to parse codex version from: ${runResult.value.stdout}`,
@@ -109,13 +115,18 @@ async function discoverCodex(
   };
 }
 
+interface InvokeCodexInput {
+  request: InvocationRequest;
+  signal: AbortSignal;
+  workspace: WorkspacePaths | undefined;
+  options: CodexAdapterOptions;
+  activeInvocations: Map<string, ActiveInvocation>;
+}
+
 async function invokeCodex(
-  request: InvocationRequest,
-  signal: AbortSignal,
-  workspace: WorkspacePaths | undefined,
-  options: CodexAdapterOptions,
-  activeInvocations: Map<string, ActiveInvocation>,
+  input: InvokeCodexInput,
 ): Promise<Outcome<InvocationResult>> {
+  const { request, signal, workspace, options, activeInvocations } = input;
   if (signal.aborted) {
     return failure("CANCELLED", "Invocation cancelled before launch.");
   }
